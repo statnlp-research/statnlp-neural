@@ -4,9 +4,10 @@ from statnlp.hypergraph.TensorBaseNetwork import TensorBaseNetwork
 import numpy as np
 from typing import Dict
 
+
 class NERCompiler(NetworkCompiler):
 
-    def __init__(self, label_map: Dict, max_size:int = 20):
+    def __init__(self, label_map: Dict, max_size: int = 20):
         super().__init__()
         self.labels = [None] * len(label_map)
         self.label2id = label_map
@@ -55,9 +56,9 @@ class NERCompiler(NetworkCompiler):
         all_nodes = self._all_nodes
         root_idx = np.argwhere(all_nodes == root_node)[0][0]
         node_count = root_idx + 1
-        network = builder.build_from_generic(network_id, inst, self._all_nodes, self._all_children, node_count, self.num_hyperedge, param, self)
+        network = builder.build_from_generic(network_id, inst, self._all_nodes, self._all_children, node_count,
+                                             self.num_hyperedge, param, self)
         return network
-
 
     def build_generic_network(self, max_size):
         builder = TensorBaseNetwork.NetworkBuilder.builder()
@@ -73,7 +74,7 @@ class NERCompiler(NetworkCompiler):
                     builder.add_edge(tag_node, [child])
                 current[l] = tag_node
             children = current
-            root = self.to_root(i+1)
+            root = self.to_root(i + 1)
             builder.add_node(root)
             for child in children:
                 builder.add_edge(root, [child])
@@ -84,7 +85,8 @@ class NERCompiler(NetworkCompiler):
         size = inst.size()
         root_node = self.to_root(size)
         all_nodes = network.get_all_nodes()
-        curr_idx = np.argwhere(all_nodes == root_node)[0][0] #network.count_nodes() - 1 #self._all_nodes.index(root_node)
+        curr_idx = np.argwhere(all_nodes == root_node)[0][
+            0]  # network.count_nodes() - 1 #self._all_nodes.index(root_node)
         prediction = [None for i in range(size)]
         for i in range(size):
             children = network.get_max_path(curr_idx)
@@ -94,4 +96,3 @@ class NERCompiler(NetworkCompiler):
             curr_idx = child
         inst.set_prediction(prediction)
         return inst
-

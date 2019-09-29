@@ -1,6 +1,6 @@
-
 from statnlp.common import LinearInstance
 import re
+
 
 def read_insts(file, is_train, number):
     insts = []

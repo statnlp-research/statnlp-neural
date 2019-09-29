@@ -6,13 +6,14 @@ from statnlp.hypergraph.NetworkConfig import LossType
 
 class TensorNetwork:
 
-    def __init__(self, network_id, instance, fm, node_count, num_stage = -1, num_row = -1, num_hyperedge = -1, staged_nodes = None):
+    def __init__(self, network_id, instance, fm, node_count, num_stage=-1, num_row=-1, num_hyperedge=-1,
+                 staged_nodes=None):
         self.network_id = network_id
         self.inst = instance
         self.fm = fm
         self.gnp = fm.gnp
         self.nodeid2labelid = {}
-        #self.node2hyperedge = []
+        # self.node2hyperedge = []
 
         self.num_stage = num_stage
         self.num_row = num_row
@@ -22,7 +23,6 @@ class TensorNetwork:
         self.size = node_count
         self.neg_inf_idx = -1
         self.zero_idx = self.neg_inf_idx - 1
-
 
     def get_network_id(self):
         return self.network_id
@@ -45,36 +45,36 @@ class TensorNetwork:
             emissions = torch.stack(emissions, 0)
             self.inside_scores[self.staged_nodes[0]] = emissions[self.staged_nodes[0]]  ## REIMINDER: stageIdx = 0.
         else:
-            #emissions = torch.take(self.nn_output, self.nodeid2nn[self.staged_nodes[0]])
-            emissions = torch.take(self.nn_output,  self.stagenodes2nodeid2nn[0])
+            # emissions = torch.take(self.nn_output, self.nodeid2nn[self.staged_nodes[0]])
+            emissions = torch.take(self.nn_output, self.stagenodes2nodeid2nn[0])
             self.inside_scores[self.staged_nodes[0]] = emissions  ## REIMINDER: stageIdx = 0.
-
-
-
 
         for stage_idx in range(1, self.num_stage):  ## starting from stage Idx = 1
 
             childrens_stage = self.get_children(stage_idx)
 
-            for_expr = torch.sum(torch.take(self.inside_scores, childrens_stage), 2)  # this line is same as the above two lines
+            for_expr = torch.sum(torch.take(self.inside_scores, childrens_stage),
+                                 2)  # this line is same as the above two lines
 
             if not NetworkConfig.NEUTRAL_BUILDER_ENABLE_NODE_TO_NN_OUTPUT_MAPPING:
-                emission_expr = emissions[self.staged_nodes[stage_idx]].view(self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge[stage_idx])
+                emission_expr = emissions[self.staged_nodes[stage_idx]].view(self.num_row[stage_idx], 1).expand(
+                    self.num_row[stage_idx], self.num_hyperedge[stage_idx])
             else:
-                #emission_expr = torch.take(self.nn_output, self.nodeid2nn[self.staged_nodes[stage_idx]]).view(self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge)
-                emission_expr = torch.take(self.nn_output, self.stagenodes2nodeid2nn[stage_idx]).view(self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge[stage_idx])
+                # emission_expr = torch.take(self.nn_output, self.nodeid2nn[self.staged_nodes[stage_idx]]).view(self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge)
+                emission_expr = torch.take(self.nn_output, self.stagenodes2nodeid2nn[stage_idx]).view(
+                    self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge[stage_idx])
 
             if not NetworkConfig.IGNORE_TRANSITION:
-                trans_expr = torch.take(self.gnp.transition_mat, self.trans_id[stage_idx])  # this line is same as the above two lines
+                trans_expr = torch.take(self.gnp.transition_mat,
+                                        self.trans_id[stage_idx])  # this line is same as the above two lines
                 score = for_expr + trans_expr + emission_expr
             else:
                 score = for_expr + emission_expr
 
             if NetworkConfig.LOSS_TYPE == LossType.CRF:
-                self.inside_scores[self.staged_nodes[stage_idx]] = logSumExp(score) #torch.max(score, 1) #
-            else: # LossType.SSVM
+                self.inside_scores[self.staged_nodes[stage_idx]] = logSumExp(score)  # torch.max(score, 1) #
+            else:  # LossType.SSVM
                 self.inside_scores[self.staged_nodes[stage_idx]], _ = torch.max(score, 1)  # torch.max(score, 1) #
-
 
         # final_inside = self.get_insides()
         final_inside = self.inside_scores[-3]
@@ -89,21 +89,21 @@ class TensorNetwork:
     #     #print('self.inside_scores[-2]:',self.inside_scores[-2])
     #     return self.inside_scores[-3]
 
-
     def get_label_id(self, node_k):
         if node_k not in self.nodeid2labelid:
             self.nodeid2labelid[node_k] = self.fm.get_label_id(self, node_k)
 
         return self.nodeid2labelid[node_k]
 
-    def touch(self, is_train = True):
+    def touch(self, is_train=True):
 
         self.trans_id = [None] * self.num_stage
 
         for stage_idx in range(1, self.num_stage):
             self.touch_stage(stage_idx)
 
-        self.children = [torch.from_numpy(self.children[stage_idx]).to(NetworkConfig.DEVICE) for stage_idx in range(self.num_stage)]
+        self.children = [torch.from_numpy(self.children[stage_idx]).to(NetworkConfig.DEVICE) for stage_idx in
+                         range(self.num_stage)]
 
         if NetworkConfig.NEUTRAL_BUILDER_ENABLE_NODE_TO_NN_OUTPUT_MAPPING:
             # if is_train:
@@ -113,7 +113,6 @@ class TensorNetwork:
             #     self.nodeid2nn = torch.LongTensor(self.fm.gnp.network2nodeid2nn[self.network_id])
             # else:
             #     self.nodeid2nn = torch.LongTensor(self.fm.build_node2nn_output(self))
-
 
             if is_train:
                 if self.fm.gnp.network2stagenodes2nodeid2nn[self.network_id] == None:
@@ -130,9 +129,7 @@ class TensorNetwork:
                 for stage_idx in range(self.num_stage):
                     self.stagenodes2nodeid2nn[stage_idx] = nodeid2nn[self.staged_nodes[stage_idx]]
 
-
-        #self.num_row = torch.LongTensor(self.num_row)
-
+        # self.num_row = torch.LongTensor(self.num_row)
 
     def touch_stage(self, stage_idx):
 
@@ -154,21 +151,17 @@ class TensorNetwork:
 
         self.staged_nodes[stage_idx] = torch.from_numpy(self.staged_nodes[stage_idx]).to(NetworkConfig.DEVICE)
 
-
     @abstractmethod
     def get_children(self, k) -> np.ndarray:
         pass
-
 
     @abstractmethod
     def get_node(self, k):
         pass
 
-
     @abstractmethod
     def count_nodes(self) -> int:
         pass
-
 
     @abstractmethod
     def is_removed(self, k):
@@ -187,7 +180,7 @@ class TensorNetwork:
             emissions = torch.stack(emissions, 0)
             self._max[self.staged_nodes[0]] = emissions[self.staged_nodes[0]]
         else:
-            #emissions = torch.take(self.nn_output, self.nodeid2nn[self.staged_nodes[0]])
+            # emissions = torch.take(self.nn_output, self.nodeid2nn[self.staged_nodes[0]])
             emissions = torch.take(self.nn_output, self.stagenodes2nodeid2nn[0])
             self._max[self.staged_nodes[0]] = emissions  ## REIMINDER: stageIdx = 0.
 
@@ -198,29 +191,31 @@ class TensorNetwork:
             for_expr = torch.sum(torch.take(self._max, childrens_stage), 2)  # this line is same as the above two lines
 
             if not NetworkConfig.NEUTRAL_BUILDER_ENABLE_NODE_TO_NN_OUTPUT_MAPPING:
-                emission_expr = emissions[self.staged_nodes[stage_idx]].view(self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge[stage_idx])
+                emission_expr = emissions[self.staged_nodes[stage_idx]].view(self.num_row[stage_idx], 1).expand(
+                    self.num_row[stage_idx], self.num_hyperedge[stage_idx])
             else:
-                #emission_expr = torch.take(self.nn_output, self.nodeid2nn[self.staged_nodes[stage_idx]]).view(self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge)
-                emission_expr = torch.take(self.nn_output, self.stagenodes2nodeid2nn[stage_idx]).view(self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge[stage_idx])
+                # emission_expr = torch.take(self.nn_output, self.nodeid2nn[self.staged_nodes[stage_idx]]).view(self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge)
+                emission_expr = torch.take(self.nn_output, self.stagenodes2nodeid2nn[stage_idx]).view(
+                    self.num_row[stage_idx], 1).expand(self.num_row[stage_idx], self.num_hyperedge[stage_idx])
 
             if not NetworkConfig.IGNORE_TRANSITION:
-                trans_expr = torch.take(self.gnp.transition_mat, self.trans_id[stage_idx])  # this line is same as the above two lines
+                trans_expr = torch.take(self.gnp.transition_mat,
+                                        self.trans_id[stage_idx])  # this line is same as the above two lines
                 score = for_expr + trans_expr + emission_expr
             else:
                 score = for_expr + emission_expr
 
             self._max[self.staged_nodes[stage_idx]], max_id_list = torch.max(score, 1)  # max_id_list: max_number
 
-            max_id_list = max_id_list.view(self.num_row[stage_idx], 1, 1).expand(self.num_row[stage_idx], 1, NetworkConfig.HYPEREDGE_ORDER)
-            self.max_paths[self.staged_nodes[stage_idx]] = torch.gather(childrens_stage, 1, max_id_list).squeeze(1) ## max_number, 2
-
+            max_id_list = max_id_list.view(self.num_row[stage_idx], 1, 1).expand(self.num_row[stage_idx], 1,
+                                                                                 NetworkConfig.HYPEREDGE_ORDER)
+            self.max_paths[self.staged_nodes[stage_idx]] = torch.gather(childrens_stage, 1, max_id_list).squeeze(
+                1)  ## max_number, 2
 
         self.max_paths = self.max_paths.cpu().numpy()
 
         self.non_exist_node_id = self.size
 
-
     def get_max_path(self, k):
         ## TODO: children might contains non exist node ids careful
         return self.max_paths[k]
-

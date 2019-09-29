@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import torch.nn as nn
 
+
 class NeuralBuilder(nn.Module):
 
     def __init__(self, gnp):

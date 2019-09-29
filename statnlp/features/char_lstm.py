@@ -5,9 +5,10 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from statnlp.hypergraph import NetworkConfig
 
+
 class CharBiLSTM(nn.Module):
 
-    def __init__(self, char2idx, chars, char_emb_size, charlstm_hidden_dim, dropout = 0.5):
+    def __init__(self, char2idx, chars, char_emb_size, charlstm_hidden_dim, dropout=0.5):
         super(CharBiLSTM, self).__init__()
         print("[Info] Building character-level LSTM")
         self.char_emb_size = char_emb_size
@@ -21,8 +22,8 @@ class CharBiLSTM(nn.Module):
         # self.char_embeddings.weight.data.copy_(torch.from_numpy(self.random_embedding(self.char_size, self.char_emb_size)))
         self.char_embeddings = self.char_embeddings.to(self.device)
 
-        self.char_lstm = nn.LSTM(self.char_emb_size, self.hidden // 2, num_layers=1, batch_first=True, bidirectional=True).to(self.device)
-
+        self.char_lstm = nn.LSTM(self.char_emb_size, self.hidden // 2, num_layers=1, batch_first=True,
+                                 bidirectional=True).to(self.device)
 
     # def random_embedding(self, vocab_size, embedding_dim):
     #     print("Randomly initialize character embedding with scale")
@@ -56,17 +57,10 @@ class CharBiLSTM(nn.Module):
         #  char_hidden[0] = h_t = (2, batch_size, lstm_dimension)
         # char_rnn_out, _ = pad_packed_sequence(char_rnn_out)
         ## transpose because the first dimension is num_direction x num-layer
-        hidden = char_hidden[0].transpose(1,0).contiguous().view(batch_size * sent_len, 1, -1)   ### before view, the size is ( batch_size * sent_len, 2, lstm_dimension) 2 means 2 direciton..
+        hidden = char_hidden[0].transpose(1, 0).contiguous().view(batch_size * sent_len, 1,
+                                                                  -1)  ### before view, the size is ( batch_size * sent_len, 2, lstm_dimension) 2 means 2 direciton..
         output = hidden[recover_idx].view(batch_size, sent_len, -1)
         return output
 
-
     def forward(self, char_input, seq_lengths):
         return self.get_last_hiddens(char_input, seq_lengths)
-
-
-
-
-
-
-

@@ -138,7 +138,8 @@ class TensorBaseNetwork(TensorTableLookupNetwork):
 
             return node_list, children_list, num_hyperedge
 
-        def post_build(self, network_id, instance, node_list, children_list, node_count, num_hyperedge, param, compiler):
+        def post_build(self, network_id, instance, node_list, children_list, node_count, num_hyperedge, param,
+                       compiler):
             # if network_id != None or instance != None or param != None or compiler != None:
             result = BaseNetwork.NetworkBuilder.quick_build(network_id, instance, node_list, children_list,
                                                             len(node_list), param, compiler)
@@ -173,17 +174,18 @@ class TensorBaseNetwork(TensorTableLookupNetwork):
                 col = sorted_nodes[stage_idx]
                 num_hyperedge[stage_idx] = max([len(children_list[node_id]) for node_id in col])
 
-                stage_children_np = np.empty((num_row[stage_idx], num_hyperedge[stage_idx], NetworkConfig.HYPEREDGE_ORDER), dtype=np.long)
+                stage_children_np = np.empty(
+                    (num_row[stage_idx], num_hyperedge[stage_idx], NetworkConfig.HYPEREDGE_ORDER), dtype=np.long)
                 stage_children_np[:, :, 0].fill(neg_inf_idx)
                 stage_children_np[:, :, 1].fill(zero_idx)
 
                 col = sorted_nodes[stage_idx]
                 for row_idx, node_id in enumerate(col):
-                    #total_space += num_hyperedge[stage_idx]
+                    # total_space += num_hyperedge[stage_idx]
                     # all_children_list[stage_idx][now_node_k]
                     for hyperedge_index in range(len(children_list[node_id])):
                         hyperedge = children_list[node_id][hyperedge_index]
-                        #actual_space += 1
+                        # actual_space += 1
                         if len(hyperedge) > 0:
                             stage_children_np[row_idx][hyperedge_index][0] = hyperedge[0]
                             if len(hyperedge) > 1:
@@ -201,19 +203,21 @@ class TensorBaseNetwork(TensorTableLookupNetwork):
             # print('Utility[', network_id, ']: ', (actual_space + 0.0) / total_space, '\t', num_hyperedge)
             # print(staged_nodes)
             # print()
-            #result.is_visible = is_visible
+            # result.is_visible = is_visible
             return result
 
         def build(self, network_id, instance, param, compiler):
 
             node_list, children_list, num_hyperedge = self.pre_build()
-            ret = self.post_build(network_id, instance, node_list, children_list, len(node_list), num_hyperedge, param, compiler)
+            ret = self.post_build(network_id, instance, node_list, children_list, len(node_list), num_hyperedge, param,
+                                  compiler)
             return ret
 
-        def build_from_generic(self, network_id, instance, node_list, children_list, node_count, num_hyperedge, param, compiler):
-            ret = self.post_build(network_id, instance, node_list[:node_count], children_list[:node_count], node_count, num_hyperedge, param, compiler)
+        def build_from_generic(self, network_id, instance, node_list, children_list, node_count, num_hyperedge, param,
+                               compiler):
+            ret = self.post_build(network_id, instance, node_list[:node_count], children_list[:node_count], node_count,
+                                  num_hyperedge, param, compiler)
             return ret
-
 
         def check_link_validity(self, parent, children):
             for child in children:
@@ -239,9 +243,3 @@ class TensorBaseNetwork(TensorTableLookupNetwork):
         def check_node_validity(self, node):
             if node not in self._children_tmp:
                 raise Exception("Node not found:", NetworkIDMapper.to_hybrid_node_array(node))
-
-
-
-
-
-

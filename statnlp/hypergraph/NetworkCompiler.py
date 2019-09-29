@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 
-
 class NetworkCompiler:
 
     def __init__(self):
@@ -13,7 +12,6 @@ class NetworkCompiler:
             return self.compile_labeled(network_id, instance, fm)
         else:
             return self.compile_unlabeled(network_id, instance, fm)
-
 
     @abstractmethod
     def compile_labeled(self, network_id, inst, param):

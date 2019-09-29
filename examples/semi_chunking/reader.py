@@ -33,7 +33,6 @@ def read_insts(file, is_labeled, number):
             input = re.sub('\d', '0', input)
             output = fields[-1]
 
-
             if output == "O":
                 label = "O"
             else:
@@ -58,4 +57,3 @@ def read_insts(file, is_labeled, number):
     f.close()
 
     return insts
-

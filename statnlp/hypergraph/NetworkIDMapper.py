@@ -3,7 +3,6 @@ from statnlp.hypergraph.NetworkConfig import NetworkConfig
 import numpy as np
 
 
-
 class NetworkIDMapper:
     CAPACITY = NetworkConfig.DEFAULT_CAPACITY_NETWORK
 
@@ -31,10 +30,8 @@ class NetworkIDMapper:
             result[k] = value % NetworkIDMapper.CAPACITY[k]
             value = v
 
-
         result[0] = value;
         return result
-
 
     @staticmethod
     def to_hybrid_node_ID(array):
@@ -48,15 +45,14 @@ class NetworkIDMapper:
         if len(array) != len(NetworkIDMapper.CAPACITY):
             raise Exception("array size is ", len(array))
 
-
         v = array[0]
 
         for k in range(1, len(array)):
-            #print(array[k], NetworkIDMapper.CAPACITY[k])
+            # print(array[k], NetworkIDMapper.CAPACITY[k])
             if array[k] >= NetworkIDMapper.CAPACITY[k]:
-                raise Exception("Invalid: capacity for ", k, " is ", NetworkIDMapper.CAPACITY[k], " but the value is ", array[k])
+                raise Exception("Invalid: capacity for ", k, " is ", NetworkIDMapper.CAPACITY[k], " but the value is ",
+                                array[k])
             v = v * NetworkIDMapper.CAPACITY[k] + array[k]
-
 
         return v
 

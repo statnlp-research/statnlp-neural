@@ -3,7 +3,7 @@ from statnlp.hypergraph.Network import Network
 
 class TableLookupNetwork(Network):
 
-    def __init__(self, network_id, inst, nodes, children, param, compiler, num_stage = -1, num_row = -1):
+    def __init__(self, network_id, inst, nodes, children, param, compiler, num_stage=-1, num_row=-1):
         super().__init__(network_id, inst, param)
         self.nodes = nodes
         self.children = children
@@ -37,4 +37,3 @@ class TableLookupNetwork(Network):
             return self.count_nodes() - 1 == k
         else:
             return (self.num_stage - 1) * self.num_row == k
-

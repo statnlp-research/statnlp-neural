@@ -11,12 +11,8 @@ class BaseNetwork(TableLookupNetwork):
 
         self.is_visible = [False for i in range(node_count)]
 
-
     def count_nodes(self):
         return self.node_count
-
-
-
 
     class NetworkBuilder:
 
@@ -91,7 +87,6 @@ class BaseNetwork(TableLookupNetwork):
 
             nodes_value2id_map = {}
 
-
             values.sort()
             for k in range(len(values)):
                 node_list[k] = values[k]
@@ -101,7 +96,7 @@ class BaseNetwork(TableLookupNetwork):
             children_list = [None for i in range(len(node_list))]
 
             for parent in self._children_tmp:
-                #print("builder parent: ", parent, " chidren_tmp: " , self._children_tmp[parent])
+                # print("builder parent: ", parent, " chidren_tmp: " , self._children_tmp[parent])
                 parent_index = nodes_value2id_map[parent]
                 childrens = self._children_tmp[parent]
                 if childrens == None:
@@ -121,7 +116,7 @@ class BaseNetwork(TableLookupNetwork):
                                 children_index.append(nodes_value2id_map[children[m]])
 
                         children_list[parent_index][k] = children_index
-                    #print("parent is :", parent, " children_list, ", children_list[parent_index])
+                    # print("parent is :", parent, " children_list, ", children_list[parent_index])
             for k in range(len(children_list)):
                 if children_list[k] == None:
                     children_list[k] = [[]]
@@ -129,13 +124,13 @@ class BaseNetwork(TableLookupNetwork):
             result = None
 
             # if network_id != None or instance != None or param != None or compiler != None:
-            result = BaseNetwork.NetworkBuilder.quick_build(network_id, instance, node_list, children_list, len(node_list), param, compiler)
+            result = BaseNetwork.NetworkBuilder.quick_build(network_id, instance, node_list, children_list,
+                                                            len(node_list), param, compiler)
             # TODO: handle the case when network_id != None or instance != None or param != None or compiler != None
             # this is for rudimentary network builder
 
             result.is_visible = is_visible
             return result
-
 
         def check_link_validity(self, parent, children):
             for child in children:
@@ -158,13 +153,6 @@ class BaseNetwork(TableLookupNetwork):
 
                 self.check_node_validity(child)
 
-
         def check_node_validity(self, node):
             if node not in self._children_tmp:
                 raise Exception("Node not found:", NetworkIDMapper.to_hybrid_node_array(node))
-
-
-
-
-
-

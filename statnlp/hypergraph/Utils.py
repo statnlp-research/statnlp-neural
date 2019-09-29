@@ -32,9 +32,9 @@ def log_sum_exp(vec):
     # print('vec:', vec)
     # max_score = vec[argmax(vec)]
     max_score, _ = torch.max(vec, 0)
-    #max_score_broadcast = max_score.view(1, -1).expand(1, vec.size()[1])
+    # max_score_broadcast = max_score.view(1, -1).expand(1, vec.size()[1])
     return max_score + \
-           torch.log(torch.sum(torch.exp(vec - max_score)))  #max_score_broadcast
+           torch.log(torch.sum(torch.exp(vec - max_score)))  # max_score_broadcast
 
 
 def logSumExp(vec):
@@ -46,13 +46,14 @@ def logSumExp(vec):
     ## In this Design, we will need to handle nodes with no hyperedges
     vec[vec == -float("inf")] = -1e10
     maxScores, _ = torch.max(vec, 1)
-    #maxScores[maxScores == -float("inf")] = 0
+    # maxScores[maxScores == -float("inf")] = 0
 
     maxScoresExpanded = maxScores.view(vec.shape[0], 1).expand(vec.shape[0], vec.shape[1])
     return maxScores + torch.log(torch.sum(torch.exp(vec - maxScoresExpanded), 1))
 
     # merged_final_vec = (vec - F.log_softmax(vec, dim=1)).mean(1) # batch_size * label_size
     # return merged_final_vec
+
 
 def logSumExp_batch(vec):
     """
@@ -63,7 +64,7 @@ def logSumExp_batch(vec):
     ## In this Design, we will need to handle nodes with no hyperedges
     vec[vec == -float("inf")] = -1e10
     maxScores, _ = torch.max(vec, 2)
-    #maxScores[maxScores == -float("inf")] = 0
+    # maxScores[maxScores == -float("inf")] = 0
 
     maxScoresExpanded = maxScores.view(vec.shape[0], vec.shape[1], 1).expand(vec.shape[0], vec.shape[1], vec.shape[2])
     return maxScores + torch.log(torch.sum(torch.exp(vec - maxScoresExpanded), 2))
@@ -80,8 +81,7 @@ def print_insts(insts):
     print()
 
 
-
-def load_emb_glove(path, word2idx, random_embedding_dim = 100, UNK = 'unk', sep = ' '):
+def load_emb_glove(path, word2idx, random_embedding_dim=100, UNK='unk', sep=' '):
     embedding_dim = -1
     embedding = dict()
 
@@ -118,7 +118,6 @@ def load_emb_glove(path, word2idx, random_embedding_dim = 100, UNK = 'unk', sep 
             #     scale = np.sqrt(3.0 / embedding_dim)
             #     embedding[UNK] = np.random.uniform(-scale, scale, [1, embedding_dim])
 
-
     if len(embedding) > 0:
         scale = np.sqrt(3.0 / embedding_dim)
         print("[Info] Use the pretrained word embedding to initialize: %d x %d" % (len(word2idx), embedding_dim))
@@ -140,9 +139,9 @@ def load_emb_glove(path, word2idx, random_embedding_dim = 100, UNK = 'unk', sep 
     return word_embedding
 
 
-def load_emb_word2vec(path, word2idx, emb_dim = 300, UNK = '</s>'):
+def load_emb_word2vec(path, word2idx, emb_dim=300, UNK='</s>'):
     from gensim.models.keyedvectors import KeyedVectors
-    #word2vec_path = '~/glove/GoogleNews-vectors-negative300.bin'
+    # word2vec_path = '~/glove/GoogleNews-vectors-negative300.bin'
     binary = True
     embedding = None
 
@@ -151,7 +150,6 @@ def load_emb_word2vec(path, word2idx, emb_dim = 300, UNK = '</s>'):
         print("pretrain embedding in None, using random embedding")
     else:
         embedding = KeyedVectors.load_word2vec_format(path, binary=binary)
-
 
     if embedding is not None:
         print("[Info] Use the pretrained word embedding to initialize: %d x %d" % (len(word2idx), emb_dim))
@@ -176,16 +174,14 @@ def load_emb_word2vec(path, word2idx, emb_dim = 300, UNK = '</s>'):
 
 
 def topological_sort(network):
-
     size = network.count_nodes()
     dists = [None] * size
 
-    #Find all the leaves and assign them 0
+    # Find all the leaves and assign them 0
     for k in range(size):
         children_list_k = network.get_children(k)
-        if len(children_list_k[0]) == 0:  #leaf
+        if len(children_list_k[0]) == 0:  # leaf
             dists[k] = 0
-
 
     # while True:
     #     num_ready = size
@@ -213,8 +209,7 @@ def topological_sort(network):
     #     if num_ready == size:
     #         break
 
-
-    #make sure the nodes in the network are sorted according to the node value
+    # make sure the nodes in the network are sorted according to the node value
     for k in range(size):
         if dists[k] == None:
             dist_k = 0
@@ -227,8 +222,6 @@ def topological_sort(network):
                         dist_k = dists[child] + 1
 
             dists[k] = dist_k
-
-
 
     from collections import defaultdict
     sorted_list = defaultdict(list)
@@ -243,6 +236,8 @@ def topological_sort(network):
 
 
 from abc import abstractmethod
+
+
 class Score():
     @abstractmethod
     def larger_than(self, obj):
@@ -254,11 +249,9 @@ class Score():
 
 
 from abc import abstractmethod
+
+
 class Eval():
     @abstractmethod
     def eval(self, insts) -> Score:
         pass
-
-
-
-

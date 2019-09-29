@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 
+
 class Instance:
 
-    def __init__(self, instance_id, weight, input = None, output = None):
+    def __init__(self, instance_id, weight, input=None, output=None):
         self.instance_id = instance_id
         self.weight = weight
         self.input = input
@@ -93,7 +94,6 @@ class Instance:
 
     def set_unlabel_instance(self, inst):
         self.unlabeled_instance = inst
-
 
 
 if __name__ == "__main__":

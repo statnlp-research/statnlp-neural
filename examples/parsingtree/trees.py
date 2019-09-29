@@ -1,7 +1,9 @@
 import collections.abc
 
+
 class TreebankNode(object):
     pass
+
 
 class InternalTreebankNode(TreebankNode):
     def __init__(self, label, children):
@@ -37,6 +39,7 @@ class InternalTreebankNode(TreebankNode):
 
         return InternalParseNode(tuple(sublabels), children)
 
+
 class LeafTreebankNode(TreebankNode):
     def __init__(self, tag, word):
         assert isinstance(tag, str)
@@ -54,8 +57,10 @@ class LeafTreebankNode(TreebankNode):
     def convert(self, index=0):
         return LeafParseNode(index, self.tag, self.word)
 
+
 class ParseNode(object):
     pass
+
 
 class InternalParseNode(ParseNode):
     def __init__(self, label, children):
@@ -109,9 +114,10 @@ class InternalParseNode(ParseNode):
             if left < child.left < right
         ]
 
+
 class LeafParseNode(ParseNode):
     def __init__(self, index, tag, word):
-        #assert isinstance(index, int)
+        # assert isinstance(index, int)
         assert index >= 0
         self.left = index
         self.right = index + 1
@@ -127,6 +133,7 @@ class LeafParseNode(ParseNode):
 
     def convert(self):
         return LeafTreebankNode(self.tag, self.word)
+
 
 def load_trees(path, strip_top=True):
     with open(path) as infile:

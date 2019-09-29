@@ -1,13 +1,14 @@
 import random
-from statnlp.examples.linear_ner.reader import read_insts
+from examples.linear_ner import read_insts
 from termcolor import colored
-from statnlp.examples.linear_ner.neural import LSTMBuilder
-from statnlp.examples.linear_ner.compiler import NERCompiler
+from examples.linear_ner import LSTMBuilder
+from examples.linear_ner import NERCompiler
 from statnlp.hypergraph.TensorGlobalNetworkParam import TensorGlobalNetworkParam
 from statnlp.common.eval import nereval
 from statnlp.hypergraph.NetworkModel import NetworkModel
 
 from statnlp.hypergraph.Utils import *
+
 START = "<START>"
 STOP = "<STOP>"
 UNK = "<UNK>"
@@ -15,10 +16,10 @@ PAD = "<PAD>"
 
 if __name__ == "__main__":
 
-    NetworkConfig.NEUTRAL_BUILDER_ENABLE_NODE_TO_NN_OUTPUT_MAPPING = True ## Always set this to true
+    NetworkConfig.NEUTRAL_BUILDER_ENABLE_NODE_TO_NN_OUTPUT_MAPPING = True  ## Always set this to true
     seed = 42
     torch.manual_seed(seed)
-    torch.set_num_threads(40) ## for cpu purpose
+    torch.set_num_threads(40)  ## for cpu purpose
     np.random.seed(seed)
     random.seed(seed)
 
@@ -27,12 +28,11 @@ if __name__ == "__main__":
     test_file = "data/conll/test.txt.bieos"
     trial_file = "data/conll/trial.txt.bieos"
 
-
     num_train = 200
     num_dev = 10
     num_test = 10
     num_iter = 10
-    device = "cpu" ## cuda:0, cuda:1,
+    device = "cpu"  ## cuda:0, cuda:1,
     optimizer_str = "sgd"
     NetworkConfig.NEURAL_LEARNING_RATE = 0.01
     # emb_file = 'data/glove.6B.100d.txt'  ## or None, means random embedding.
@@ -41,7 +41,6 @@ if __name__ == "__main__":
     NetworkConfig.DEVICE = torch.device(device)
     if "cuda" in device:
         torch.cuda.manual_seed(seed)
-
 
     train_insts = read_insts(train_file, True, num_train)
     dev_insts = read_insts(dev_file, False, num_dev)
@@ -59,7 +58,7 @@ if __name__ == "__main__":
     vocab2id = {}
     char2id = {PAD: 0, UNK: 1}
 
-    labels = [None] *len(label2id)
+    labels = [None] * len(label2id)
     for key in label2id:
         labels[label2id[key]] = key
 
@@ -71,14 +70,12 @@ if __name__ == "__main__":
 
     numpy_emb = load_emb_glove(emb_file, vocab2id)
 
-
     for inst in train_insts:
         max_size = max(len(inst.input), max_size)
         for word in inst.input:
             for ch in word:
                 if ch not in char2id:
                     char2id[ch] = len(char2id)
-
 
     print(colored('vocab_2id:', 'red'), len(vocab2id))
 
@@ -88,8 +85,10 @@ if __name__ == "__main__":
 
     for inst in train_insts + dev_insts + test_insts:
         max_word_length = max([len(word) for word in inst.input])
-        inst.word_seq = torch.LongTensor([vocab2id[word] if word in vocab2id else vocab2id[UNK] for word in inst.input]).to(NetworkConfig.DEVICE)
-        char_seq_list = [[char2id[ch] if ch in char2id else char2id[UNK] for ch in word] + [char2id[PAD]] * (max_word_length - len(word)) for word in inst.input]
+        inst.word_seq = torch.LongTensor(
+            [vocab2id[word] if word in vocab2id else vocab2id[UNK] for word in inst.input]).to(NetworkConfig.DEVICE)
+        char_seq_list = [[char2id[ch] if ch in char2id else char2id[UNK] for ch in word] + [char2id[PAD]] * (
+                    max_word_length - len(word)) for word in inst.input]
         inst.char_seq_tensor = torch.LongTensor(char_seq_list).to(NetworkConfig.DEVICE)
         inst.char_seq_len = torch.LongTensor([len(word) for word in inst.input]).to(NetworkConfig.DEVICE)
 
@@ -109,5 +108,3 @@ if __name__ == "__main__":
     # to get the prediction for each instance: use: inst.get_prediction()
     ret = model.evaluator.eval(test_insts)
     print(ret)
-
-

@@ -4,7 +4,7 @@ import re
 import math
 import os
 import subprocess
-from statnlp.examples.parsingtree import trees
+from examples.parsingtree import trees
 
 
 class Span:
@@ -31,10 +31,8 @@ class FScore(object):
         return "(Precision={:.2f}%, Recall={:.2f}%, FScore={:.2f}%)".format(
             self.precision * 100, self.recall * 100, self.fscore * 100)
 
-
     def to_tuple(self):
         return [self.precision, self.recall, self.fscore]
-
 
     def larger_than(self, obj):
         return self.fscore > obj.fscore
@@ -56,6 +54,7 @@ class FScore(object):
         self.fscore /= n
         return self
 
+
 ## the input to the evaluation should already have
 ## have the predictions which is the label.
 ## iobest tagging scheme
@@ -70,7 +69,7 @@ class nereval(Eval):
 
             output = inst.output
             prediction = inst.prediction
-            #convert to span
+            # convert to span
             output_spans = set()
             start = -1
             for i in range(len(output)):
@@ -96,11 +95,11 @@ class nereval(Eval):
             total_predict += len(predict_spans)
             p += len(predict_spans.intersection(output_spans))
 
-        precision = p * 1.0 / total_predict  if total_predict != 0 else 0
-        recall = p * 1.0 / total_entity  if total_entity != 0 else 0
+        precision = p * 1.0 / total_predict if total_predict != 0 else 0
+        recall = p * 1.0 / total_entity if total_entity != 0 else 0
         fscore = 2.0 * precision * recall / (precision + recall) if precision != 0 or recall != 0 else 0
 
-        #ret = [precision, recall, fscore]
+        # ret = [precision, recall, fscore]
         fscore = FScore(recall, precision, fscore)
 
         return fscore
@@ -118,7 +117,7 @@ class semieval(Eval):
 
             output = inst.output
             prediction = inst.prediction
-            #convert to span
+            # convert to span
             output_spans = set()
             start = -1
             for i in range(len(output)):
@@ -133,11 +132,11 @@ class semieval(Eval):
             total_predict += len(predict_spans)
             p += len(predict_spans.intersection(output_spans))
 
-        precision = p * 1.0 / total_predict  if total_predict != 0 else 0
-        recall = p * 1.0 / total_entity  if total_entity != 0 else 0
+        precision = p * 1.0 / total_predict if total_predict != 0 else 0
+        recall = p * 1.0 / total_entity if total_entity != 0 else 0
         fscore = 2.0 * precision * recall / (precision + recall) if precision != 0 or recall != 0 else 0
 
-        #ret = [precision, recall, fscore]
+        # ret = [precision, recall, fscore]
         fscore = FScore(recall, precision, fscore)
 
         return fscore
@@ -265,8 +264,6 @@ class constituent_eval(Eval):
         except:
             pass
 
-
-
         # success = (
         #         not math.isnan(fscore.fscore) or
         #         fscore.recall == 0.0 or
@@ -293,12 +290,11 @@ class label_eval(Eval):
 
             output = inst.output
             prediction = inst.prediction
-            #convert to span
+            # convert to span
             if output == prediction:
                 p += 1
 
-
-        #ret = [precision, recall, fscore]
+        # ret = [precision, recall, fscore]
         acc = p / len(insts)
         fscore = FScore(acc, acc, acc)
 

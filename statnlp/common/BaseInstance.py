@@ -1,5 +1,6 @@
 from statnlp.hypergraph.Instance import Instance
 
+
 class BaseInstance(Instance):
     def __init__(self, instance_id, weight, input, output):
         super().__init__(instance_id, weight, input, output)
@@ -39,4 +40,3 @@ class BaseInstance(Instance):
 
     def __str__(self):
         return 'input:' + str(self.input) + '\toutput:' + str(self.output) + ' is_labeled:' + str(self.is_labeled)
-

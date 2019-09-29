@@ -6,9 +6,10 @@ from statnlp.hypergraph.NeuralBuilder import NeuralBuilder
 from statnlp.hypergraph.TensorTableLookupNetwork import TensorTableLookupNetwork
 from statnlp.hypergraph.NetworkIDMapper import NetworkIDMapper
 
+
 class Visualizer():
 
-    def __init__(self, compiler : NetworkCompiler, fm : NeuralBuilder):
+    def __init__(self, compiler: NetworkCompiler, fm: NeuralBuilder):
         self.compiler = compiler
         self.fm = fm
         self.G = nx.Graph()
@@ -32,8 +33,7 @@ class Visualizer():
         input = inst.get_input()
         self.visualize(network, input)
 
-
-    def visualize(self, network : TensorTableLookupNetwork, input : list):
+    def visualize(self, network: TensorTableLookupNetwork, input: list):
 
         self.input = input
         G = self.G
@@ -46,7 +46,6 @@ class Visualizer():
             label_dict[node_arr] = self.nodearr2label(node_arr)
 
         color_values = [self.nodearr2color(node_arr) for node_arr in G.nodes()]
-
 
         for stage_idx in range(network.num_stage):
 
@@ -65,9 +64,9 @@ class Visualizer():
                             child_k_arr = tuple(child_k_arr)
                             G.add_edge(node_arr, child_k_arr)
 
-        nx.draw(G, nx.get_node_attributes(G, 'pos'), labels=label_dict, with_labels=True, node_color=color_values, font_size=self.font_size) #, node_size = 60
+        nx.draw(G, nx.get_node_attributes(G, 'pos'), labels=label_dict, with_labels=True, node_color=color_values,
+                font_size=self.font_size)  # , node_size = 60
         plt.show()
-
 
 # def test():
 #     G = nx.Graph()
@@ -112,4 +111,4 @@ class Visualizer():
 #     plt.show()
 
 
-#test()
+# test()

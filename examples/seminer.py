@@ -11,6 +11,7 @@ from termcolor import colored
 import random
 import functools
 
+
 class TagNetworkCompiler(NetworkCompiler):
 
     def __init__(self, label_map, max_size=2, max_seg_size=5):
@@ -21,7 +22,7 @@ class TagNetworkCompiler(NetworkCompiler):
         for key in self.label2id:
             self.labels[self.label2id[key]] = key
         print(self.labels)
-        #print("Inside compiler: ", self.labels)
+        # print("Inside compiler: ", self.labels)
         NetworkIDMapper.set_capacity(np.asarray([200, 200, 100, 4], dtype=np.int64))
 
         # print(self.label2id)
@@ -58,7 +59,7 @@ class TagNetworkCompiler(NetworkCompiler):
         leaf = self.to_leaf()
         builder.add_node(leaf)
 
-        output = inst.get_output() ### list of spans, span is tuple.
+        output = inst.get_output()  ### list of spans, span is tuple.
         children = [leaf]
         for span_tuple in output:
             # print(span_tuple)
@@ -66,7 +67,7 @@ class TagNetworkCompiler(NetworkCompiler):
             right = span_tuple[1]
             label = span_tuple[2]
             tag_node = self.to_tag(left, right, self.label2id[label])
-            tag_prime = self.to_tag_prime(right, self.label2id[label+"_prime"])
+            tag_prime = self.to_tag_prime(right, self.label2id[label + "_prime"])
             builder.add_node(tag_node)
             builder.add_node(tag_prime)
             builder.add_edge(tag_node, children)
@@ -81,7 +82,6 @@ class TagNetworkCompiler(NetworkCompiler):
         #     unlabel = self.compile_unlabeled(network_id, inst, param)
         #     if not unlabel.contains(network):
         #         print("not contain")
-
 
         return network
 
@@ -169,7 +169,7 @@ class TagNetworkCompiler(NetworkCompiler):
                 for l in range(len(self.labels)):
                     if l == 0 or l == len(self.labels) - 1:
                         continue
-                    if i!= j and l == self.label2id["O"]:
+                    if i != j and l == self.label2id["O"]:
                         continue
                     if self.labels[l].endswith("_prime"):
                         continue
@@ -179,7 +179,7 @@ class TagNetworkCompiler(NetworkCompiler):
                         if i > 0:
                             if not self.labels[prev_label_id].endswith("_prime"):
                                 continue
-                            child_node = self.to_tag_prime(i-1, prev_label_id)
+                            child_node = self.to_tag_prime(i - 1, prev_label_id)
                             if builder.contains_node(child_node):
                                 added = True
                                 builder.add_node(span_node)
@@ -194,7 +194,7 @@ class TagNetworkCompiler(NetworkCompiler):
                         builder.add_node(end_prime_node)
                         builder.add_edge(end_prime_node, [span_node])
 
-                        root = self.to_root(j+1)
+                        root = self.to_root(j + 1)
                         builder.add_node(root)
                         builder.add_edge(root, [end_prime_node])
         self._all_nodes, self._all_children, self.num_hyperedge = builder.pre_build()
@@ -205,16 +205,17 @@ class TagNetworkCompiler(NetworkCompiler):
         size = inst.size()
         root_node = self.to_root(size)
         all_nodes = network.get_all_nodes()
-        curr_idx = np.argwhere(all_nodes == root_node)[0][0] #network.count_nodes() - 1 #self._all_nodes.index(root_node)
+        curr_idx = np.argwhere(all_nodes == root_node)[0][
+            0]  # network.count_nodes() - 1 #self._all_nodes.index(root_node)
         prediction = []
         while curr_idx != 0:
             children = network.get_max_path(curr_idx)
             child = children[0]
             child_arr = network.get_node_array(child)
             type = child_arr[3]
-            if type == 1: ## label node
+            if type == 1:  ## label node
                 end = child_arr[0]
-                start =  end - child_arr[1] + 1
+                start = end - child_arr[1] + 1
                 label = self.labels[child_arr[2]]
                 prediction.append((start, end, label))
                 # prediction[size - i - 1] = self.labels[child_arr[1]]
@@ -227,7 +228,8 @@ class TagNetworkCompiler(NetworkCompiler):
 
 class TagNeuralBuilder(NeuralBuilder):
 
-    def __init__(self, gnp, voc_size, label_size, char2id, chars, char_emb_size, charlstm_hidden_dim, lstm_hidden_size = 100, dropout = 0.5):
+    def __init__(self, gnp, voc_size, label_size, char2id, chars, char_emb_size, charlstm_hidden_dim,
+                 lstm_hidden_size=100, dropout=0.5):
         super().__init__(gnp)
         self.token_embed = 100
         self.label_size = label_size
@@ -244,21 +246,20 @@ class TagNeuralBuilder(NeuralBuilder):
             # self.char_rnn = nn.LSTM(self.char_emb_size, charlstm_hidden_dim//2, batch_first=True, bidirectional=True).to(NetworkConfig.DEVICE)
         self.word_drop = nn.Dropout(dropout).to(NetworkConfig.DEVICE)
 
-
         lstm_input_size = self.token_embed + charlstm_hidden_dim
 
-        self.rnn = nn.LSTM(lstm_input_size, lstm_hidden_size, batch_first=True,bidirectional=True).to(NetworkConfig.DEVICE)
+        self.rnn = nn.LSTM(lstm_input_size, lstm_hidden_size, batch_first=True, bidirectional=True).to(
+            NetworkConfig.DEVICE)
         self.f_label = nn.Linear(lstm_hidden_size * 2, label_size).to(NetworkConfig.DEVICE)
 
-
-        self.init = nn.Parameter(torch.randn(lstm_hidden_size ))
-        self.last = nn.Parameter(torch.randn(lstm_hidden_size ))
+        self.init = nn.Parameter(torch.randn(lstm_hidden_size))
+        self.last = nn.Parameter(torch.randn(lstm_hidden_size))
 
         # label_hidden_size = 100
         # self.f_label = nn.Sequential(
-            # nn.Linear(lstm_hidden_size * 2, label_hidden_size).to(NetworkConfig.DEVICE),
-            # nn.ReLU().to(NetworkConfig.DEVICE),
-            # nn.Linear(lstm_hidden_size * 2, label_size).to(NetworkConfig.DEVICE)
+        # nn.Linear(lstm_hidden_size * 2, label_hidden_size).to(NetworkConfig.DEVICE),
+        # nn.ReLU().to(NetworkConfig.DEVICE),
+        # nn.Linear(lstm_hidden_size * 2, label_size).to(NetworkConfig.DEVICE)
         # ).to(NetworkConfig.DEVICE)
 
     def load_pretrain(self, path, word2idx):
@@ -272,20 +273,21 @@ class TagNeuralBuilder(NeuralBuilder):
     def build_nn_graph(self, instance):
 
         word_seq = instance.word_seq
-        word_vec = self.word_embed(word_seq).unsqueeze(0) ###1 x sent_len x embedding size.
+        word_vec = self.word_embed(word_seq).unsqueeze(0)  ###1 x sent_len x embedding size.
         word_rep = [word_vec]
 
         if self.char_emb_size > 0:
             char_seq_tensor = instance.char_seq_tensor.unsqueeze(0)
             char_seq_len = instance.char_seq_len.unsqueeze(0)
-            char_features = self.char_bilstm.get_last_hiddens(char_seq_tensor, char_seq_len)  # batch_size, sent_len, char_hidden_dim
+            char_features = self.char_bilstm.get_last_hiddens(char_seq_tensor,
+                                                              char_seq_len)  # batch_size, sent_len, char_hidden_dim
             word_rep.append(char_features)
 
         word_rep = torch.cat(word_rep, 2)
         word_rep = self.word_drop(word_rep)
         #
         lstm_out, _ = self.rnn(word_rep, None)
-        lstm_out = lstm_out.squeeze(0) # sent_len * hidden_size
+        lstm_out = lstm_out.squeeze(0)  # sent_len * hidden_size
 
         # linear_output = self.f_label(lstm_out)
         # zero_col = torch.zeros(1, self.label_size).to(NetworkConfig.DEVICE)
@@ -305,7 +307,7 @@ class TagNeuralBuilder(NeuralBuilder):
         bwd = ret[2:, :, half_lstm_dim:].transpose(0, 1)
 
         bi = torch.cat([fwd, bwd], 2)  ## sent_len x sent_len x hidden size
-        spans = self.f_label(bi) ## sent_len x sent_len x num_labels
+        spans = self.f_label(bi)  ## sent_len x sent_len x num_labels
 
         zeros = torch.zeros((sent_len - 2, sent_len - 2, 1)).to(NetworkConfig.DEVICE)  # score of (), empty label
         spans = torch.cat([zeros, spans], 2)
@@ -323,7 +325,6 @@ class TagNeuralBuilder(NeuralBuilder):
         else:
             spans = network.nn_output
             return spans[left, right][label_id]
-
 
     def get_label_id(self, network, parent_k):
         parent_arr = network.get_node_array(parent_k)
@@ -346,7 +347,6 @@ class TagNeuralBuilder(NeuralBuilder):
         #     nodeid2nn[k] = idx
         # return nodeid2nn
 
-
         num_nodes = network.count_nodes()
         nodeid2nn = [0] * num_nodes
         for k in range(num_nodes):
@@ -355,14 +355,13 @@ class TagNeuralBuilder(NeuralBuilder):
             right, length, label_id, node_type = parent_arr
             left = right - length + 1  ## right is inclusive
 
-            if node_type != 1: ### not label node.
-                idx = (size - 1) * size * self.label_size ## a index with 0
+            if node_type != 1:  ### not label node.
+                idx = (size - 1) * size * self.label_size  ## a index with 0
             else:
                 row = left * size + right
                 idx = row * self.label_size + label_id
             nodeid2nn[k] = idx
         return nodeid2nn
-
 
     def build_nn_graph_bak(self, instance):
 
@@ -391,10 +390,10 @@ class TagNeuralBuilder(NeuralBuilder):
         @functools.lru_cache(maxsize=None)
         def get_span_encoding(left, right):
             forward = (
-                    lstm_out[right+1][:self.lstm_dim] -
+                    lstm_out[right + 1][:self.lstm_dim] -
                     lstm_out[left][:self.lstm_dim])
             backward = (
-                    lstm_out[left+1][self.lstm_dim:] -
+                    lstm_out[left + 1][self.lstm_dim:] -
                     lstm_out[right + 2][self.lstm_dim:])
             # if left > 0:
             #     forward = (
@@ -437,7 +436,7 @@ class TagNeuralBuilder(NeuralBuilder):
                 zeros = torch.zeros((self.label_size)).to(NetworkConfig.DEVICE)
                 spans_i.append(zeros)
             for j in range(i, size):
-                label_scores = get_label_scores(i, j)  #  label_size
+                label_scores = get_label_scores(i, j)  # label_size
                 spans_i.append(label_scores)
             spans_i = torch.stack(spans_i, 0)
             spans.append(spans_i)
@@ -452,7 +451,7 @@ class TagReader():
     label2id_map = {}
     label2id_map["<START>"] = 0
 
-    Stats = {'MAX_WORD_LENGTH':0}
+    Stats = {'MAX_WORD_LENGTH': 0}
 
     @staticmethod
     def read_insts(file, is_labeled, number):
@@ -494,7 +493,7 @@ class TagReader():
                     label = output[2:]
                 if not label in TagReader.label2id_map:
                     TagReader.label2id_map[label] = len(TagReader.label2id_map)
-                    TagReader.label2id_map[label+"_prime"] = len(TagReader.label2id_map)
+                    TagReader.label2id_map[label + "_prime"] = len(TagReader.label2id_map)
 
                 if label == "O":
                     start = pos
@@ -536,13 +535,10 @@ if __name__ == "__main__":
     np.random.seed(seed)
     random.seed(seed)
 
-
-
     train_file = "data/conll2000/train.txt.bieos"
     dev_file = "data/conll2000/test.txt.bieos"
     test_file = "data/conll2000/test.txt.bieos"
     trial_file = "data/conll2000/trial.txt.bieos"
-
 
     TRIAL = False
     visualization = False
@@ -560,9 +556,8 @@ if __name__ == "__main__":
     # test_file = train_file
     mode = "train"
 
-    char_emb_size= 25
+    char_emb_size = 25
     charlstm_hidden_dim = 50
-
 
     if TRIAL == True:
         data_size = -1
@@ -574,7 +569,7 @@ if __name__ == "__main__":
         NetworkConfig.DEVICE = torch.device("cuda:0")
         torch.cuda.manual_seed(seed)
 
-    if num_thread > 1:  
+    if num_thread > 1:
         NetworkConfig.NUM_THREADS = num_thread
         print('Set NUM_THREADS = ', num_thread)
 
@@ -582,8 +577,6 @@ if __name__ == "__main__":
     random.shuffle(train_insts)
     dev_insts = TagReader.read_insts(dev_file, False, num_dev)
     test_insts = TagReader.read_insts(test_file, False, num_test)
-
-
 
     TagReader.label2id_map["<ROOT>"] = len(TagReader.label2id_map)
     print("map:", TagReader.label2id_map)
@@ -614,7 +607,6 @@ if __name__ == "__main__":
     print("max sentence size: {}".format(max_size))
     print("max segment length: {}".format(max_seg_size))
 
-
     print(colored('vocab_2id:', 'red'), len(vocab2id))
 
     chars = [None] * len(char2id)
@@ -624,29 +616,29 @@ if __name__ == "__main__":
     # max_word_length = TagReader.Stats['MAX_WORD_LENGTH']
     # print(colored('MAX_WORD_LENGTH:', 'blue'), TagReader.Stats['MAX_WORD_LENGTH'])
 
-
     for inst in train_insts + dev_insts + test_insts:
         max_word_length = max([len(word) for word in inst.input])
-        inst.word_seq = torch.tensor([vocab2id[START]] + [vocab2id[word] for word in inst.input] + [vocab2id[STOP]]).to(NetworkConfig.DEVICE)
+        inst.word_seq = torch.tensor([vocab2id[START]] + [vocab2id[word] for word in inst.input] + [vocab2id[STOP]]).to(
+            NetworkConfig.DEVICE)
         # inst.word_seq = torch.tensor([vocab2id[word] for word in inst.input]).to(NetworkConfig.DEVICE)
-        char_seq_list = [[char2id[ch] for ch in word] + [char2id[PAD]] * (max_word_length - len(word)) for word in inst.input]
+        char_seq_list = [[char2id[ch] for ch in word] + [char2id[PAD]] * (max_word_length - len(word)) for word in
+                         inst.input]
         char_seq_list = [[char2id[PAD]] * max_word_length] + char_seq_list + [[char2id[PAD]] * max_word_length]
         # char_seq_list = [torch.tensor([char2id[ch] for ch in word]).to(NetworkConfig.DEVICE)  for word in inst.input]
         # inst.char_seqs = char_seq_list
         inst.char_seq_tensor = torch.tensor(char_seq_list).to(NetworkConfig.DEVICE)
         # char_seq_tensor: (1, sent_len, word_length)
-        inst.char_seq_len = torch.tensor([max_word_length] + [len(word) for word in inst.input] + [max_word_length]).to(NetworkConfig.DEVICE)
+        inst.char_seq_len = torch.tensor([max_word_length] + [len(word) for word in inst.input] + [max_word_length]).to(
+            NetworkConfig.DEVICE)
         # inst.char_seq_len = torch.tensor([len(word) for word in inst.input]).to(NetworkConfig.DEVICE)
 
-
-
     gnp = TensorGlobalNetworkParam()
-    fm = TagNeuralBuilder(gnp, len(vocab2id), len(TagReader.label2id_map), char2id, chars, char_emb_size, charlstm_hidden_dim,)
+    fm = TagNeuralBuilder(gnp, len(vocab2id), len(TagReader.label2id_map), char2id, chars, char_emb_size,
+                          charlstm_hidden_dim, )
     # fm.load_pretrain('data/glove.6B.100d.txt', vocab2id)
     fm.load_pretrain(None, vocab2id)
     print(list(TagReader.label2id_map.keys()))
     compiler = TagNetworkCompiler(TagReader.label2id_map, max_size, max_seg_size)
-
 
     evaluator = semieval()
     model = NetworkModel(fm, compiler, evaluator)
@@ -654,8 +646,10 @@ if __name__ == "__main__":
 
     if visualization:
         from statnlp.hypergraph import Visualizer
+
+
         class SemiVisualizer(Visualizer):
-            def __init__(self, compiler, fm, labels, span = 50):
+            def __init__(self, compiler, fm, labels, span=50):
                 super().__init__(compiler, fm)
                 self.labels = labels
                 self.span = span
@@ -664,7 +658,7 @@ if __name__ == "__main__":
                 right_idx, length, label_id, node_type = node_arr
                 label = self.labels[label_id]
                 label_str = '-'.join(label) if label else '()'
-                return str(right_idx - length+1) + ',' + str(right_idx) + ' ' + label_str
+                return str(right_idx - length + 1) + ',' + str(right_idx) + ' ' + label_str
 
             def nodearr2color(self, node_arr):
                 if node_arr[3] == 0 or node_arr[3] == 3:
@@ -674,17 +668,16 @@ if __name__ == "__main__":
                 elif node_arr[3] == 2:
                     return 'red'  ## prime node is red.
 
-
             def nodearr2coord(self, node_arr):
                 span = self.span
 
-                right_idx, length , label_id, node_type = node_arr
+                right_idx, length, label_id, node_type = node_arr
                 left_idx = right_idx - length + 1
 
-                if node_type == 0: ##Sink
+                if node_type == 0:  ##Sink
                     x = -1
                     y = 0
-                elif node_type == 3: ##Root
+                elif node_type == 3:  ##Root
                     x = right_idx + 1
                     y = 0
 
@@ -701,17 +694,14 @@ if __name__ == "__main__":
 
                 # x -= label_id * 2
 
-
                 return (x, y)
+
 
         visualizer = SemiVisualizer(compiler, fm, labels)
         inst = train_insts[0]
-        inst.is_labeled = False # True
+        inst.is_labeled = False  # True
         visualizer.visualize_inst(inst)
         exit()
-
-
-
 
     if batch_size == 1:
         model.learn(train_insts, num_iter, dev_insts, test_insts, optimizer_str, batch_size)
@@ -720,7 +710,6 @@ if __name__ == "__main__":
 
     model.load_state_dict(torch.load('best_model.pt'))
     # gnp.print_transition(labels)
-
 
     results = model.test(test_insts)
     for inst in results:
@@ -731,5 +720,3 @@ if __name__ == "__main__":
 
     ret = model.evaluator.eval(test_insts)
     print(ret)
-
-

@@ -6,14 +6,13 @@ from statnlp.hypergraph import NeuralBuilder
 from statnlp.hypergraph import NetworkModel, NetworkConfig
 import torch.nn as nn
 import torch
-import  numpy as np
+import numpy as np
 from statnlp.hypergraph.Utils import load_emb_glove, Score
 from statnlp.common import LinearInstance
 from termcolor import colored
 from enum import Enum
 from statnlp.common.eval import *
 import torch.nn.functional as F
-
 
 START = "<START>"
 STOP = "<STOP>"
@@ -22,11 +21,12 @@ PAD = "<PAD>"
 # SINK = "<SINK>"
 # ROOT = "<ROOT>"
 
-polar2symbol = {'positive':'+', 'neutral':'0', 'negative':'-'}
-symbol2polar = {'+':'positive', '0':'neutral', '-':'negative'}
+polar2symbol = {'positive': '+', 'neutral': '0', 'negative': '-'}
+symbol2polar = {'+': 'positive', '0': 'neutral', '-': 'negative'}
 
 volitionnal_entity_type = ['PERSON', 'ORGANIZATION']
 DEBUG = False
+
 
 class NodeType(Enum):
     sink = 0
@@ -42,13 +42,13 @@ class TSNetworkCompiler(NetworkCompiler):
         self.label2id = label2id
         self.labels = labels
 
-
         self.scope_tags = scope_tags
         self.polar_tags = polar_tags
 
         self.max_size = max_size
         ### position, tag, nodeType
-        NetworkIDMapper.set_capacity(np.asarray([self.max_size, NodeType.root.value + 1, len(self.labels) ], dtype=np.int64))
+        NetworkIDMapper.set_capacity(
+            np.asarray([self.max_size, NodeType.root.value + 1, len(self.labels)], dtype=np.int64))
 
         if DEBUG:
             print('TSNetworkCompiler:__init__()')
@@ -86,7 +86,6 @@ class TSNetworkCompiler(NetworkCompiler):
 
         return False
 
-
     def get_targets(self, output) -> list:
         targets = []
         start_idx = 0
@@ -105,7 +104,6 @@ class TSNetworkCompiler(NetworkCompiler):
                 targets.append(target)
 
         return targets
-
 
     def compile_labeled(self, network_id, inst, param):
 
@@ -133,7 +131,6 @@ class TSNetworkCompiler(NetworkCompiler):
             builder.add_node(from_node)
             builder.add_edge(from_node, to_node_list)
 
-
         for idx, target in enumerate(targets):
 
             s, e, polar = target
@@ -148,8 +145,6 @@ class TSNetworkCompiler(NetworkCompiler):
                     from_node = self.to_scope(pos, self.label2id['BB' + polar])
                     add_edge(from_node, [to_node])
 
-
-
                 to_node = from_node
                 from_node = self.to_scope(s, self.label2id['Be' + polar])
                 add_edge(from_node, [to_node])
@@ -157,11 +152,10 @@ class TSNetworkCompiler(NetworkCompiler):
 
             else:
 
-                last_entity_end_node = from_node  #eE or eS
+                last_entity_end_node = from_node  # eE or eS
 
                 last_target = targets[idx - 1]
                 last_s, last_e, last_polar = last_target
-
 
                 scope_node = self.to_scope(s - 1, self.label2id['AB' + last_polar + polar])
                 builder.add_node(scope_node)
@@ -176,14 +170,14 @@ class TSNetworkCompiler(NetworkCompiler):
                     scope_node = self.to_scope(pos, self.label2id['BB' + polar])
                     builder.add_node(scope_node)
 
-                #AA - AA
+                # AA - AA
                 from_node = last_entity_end_node
                 for pos in range(last_e, s):
                     to_node = from_node
                     from_node = self.to_scope(pos - 1, self.label2id['AA' + last_polar])
                     builder.add_edge(from_node, [to_node])
 
-                #AA - AB
+                # AA - AB
 
                 from_node = self.to_scope(last_e - 1, self.label2id['AB' + last_polar + polar])
                 builder.add_edge(from_node, [last_entity_end_node])
@@ -191,7 +185,6 @@ class TSNetworkCompiler(NetworkCompiler):
                     to_node = self.to_scope(pos - 1, self.label2id['AA' + last_polar])
                     from_node = self.to_scope(pos, self.label2id['AB' + last_polar + polar])
                     builder.add_edge(from_node, [to_node])
-
 
                 # AB - BB,  BB - BB
                 for pos in range(last_e, s):
@@ -204,8 +197,6 @@ class TSNetworkCompiler(NetworkCompiler):
                         from_node = self.to_scope(pos, self.label2id['BB' + polar])
                         builder.add_edge(from_node, [to_node])
 
-
-
                 from_node = self.to_scope(s, self.label2id['Be' + polar])
                 builder.add_node(from_node)
 
@@ -215,9 +206,6 @@ class TSNetworkCompiler(NetworkCompiler):
                 if s - last_e > 0:
                     to_node = self.to_scope(s - 1, self.label2id['BB' + polar])
                     builder.add_edge(from_node, [to_node])
-
-
-
 
             if target_len == 1:
                 to_node = from_node
@@ -238,7 +226,6 @@ class TSNetworkCompiler(NetworkCompiler):
                 from_node = self.to_scope(e - 1, self.label2id['eE' + polar])
                 add_edge(from_node, [to_node])
 
-
         last_target = targets[-1]
         last_s, last_e, last_polar = last_target
 
@@ -250,7 +237,6 @@ class TSNetworkCompiler(NetworkCompiler):
         to_node = from_node
         from_node = node_root
         add_edge(from_node, [to_node])
-
 
         network = builder.build(network_id, inst, param, self)
         return network
@@ -274,7 +260,6 @@ class TSNetworkCompiler(NetworkCompiler):
                     node_scope = self.to_scope(pos, label2id[scope_tag + polor])
                     builder.add_node(node_scope)
 
-
         # sink to colunm 0
         for polar in self.polar_tags:
             to_node = node_sink
@@ -283,7 +268,6 @@ class TSNetworkCompiler(NetworkCompiler):
 
             from_node = self.to_scope(0, label2id['Be' + polar])
             builder.add_edge(from_node, [to_node])
-
 
         for pos in range(size):
             for polar in self.polar_tags:
@@ -298,16 +282,13 @@ class TSNetworkCompiler(NetworkCompiler):
                     from_node = self.to_scope(pos + 1, label2id['Be' + polar])
                     builder.add_edge(from_node, [to_node])
 
-
                     to_node = self.to_scope(pos, label2id['Be' + polar])
                     from_node = self.to_scope(pos, label2id['eB' + polar])
                     builder.add_edge(from_node, [to_node])
 
-
                 to_node = self.to_scope(pos, label2id['Be' + polar])
                 from_node = self.to_scope(pos, label2id['eS' + polar])
                 builder.add_edge(from_node, [to_node])
-
 
                 if pos > 0:
                     to_node = self.to_scope(pos, label2id['eE' + polar])
@@ -331,7 +312,6 @@ class TSNetworkCompiler(NetworkCompiler):
                         from_node = self.to_scope(pos, label2id['AB' + polar + next_polar])
                         builder.add_edge(from_node, [to_node])
 
-
                     if pos < size - 2:
                         to_node = self.to_scope(pos, label2id['eB' + polar])
                         from_node = self.to_scope(pos + 1, label2id['eM' + polar])
@@ -351,20 +331,15 @@ class TSNetworkCompiler(NetworkCompiler):
                         from_node = self.to_scope(pos + 1, label2id['eE' + polar])
                         builder.add_edge(from_node, [to_node])
 
-
                     to_node = self.to_scope(pos, label2id['AA' + polar])
                     from_node = self.to_scope(pos + 1, label2id['AA' + polar])
                     builder.add_edge(from_node, [to_node])
-
-
-
 
                     if pos < size - 2:
                         for next_polar in self.polar_tags:
                             to_node = self.to_scope(pos, label2id['AA' + polar])
                             from_node = self.to_scope(pos + 1, label2id['AB' + polar + next_polar])
                             builder.add_edge(from_node, [to_node])
-
 
                             to_node = self.to_scope(pos, label2id['AB' + polar + next_polar])
                             from_node = self.to_scope(pos + 1, label2id['BB' + next_polar])
@@ -375,17 +350,13 @@ class TSNetworkCompiler(NetworkCompiler):
                         from_node = self.to_scope(pos + 1, label2id['Be' + next_polar])
                         builder.add_edge(from_node, [to_node])
 
-
         for polar in self.polar_tags:
             to_node = self.to_scope(size - 1, label2id['AA' + polar])
             from_node = node_root
             builder.add_edge(from_node, [to_node])
 
-
         network = builder.build(network_id, inst, param, self)
         return network
-
-
 
     def decompile(self, network):
         inst = network.get_instance()
@@ -393,9 +364,10 @@ class TSNetworkCompiler(NetworkCompiler):
         size = inst.size()
         root_node = self.to_root(size)
         all_nodes = network.get_all_nodes()
-        root_idx = np.argwhere(all_nodes == root_node)[0][0]  # network.count_nodes() - 1 #self._all_nodes.index(root_node)
+        root_idx = np.argwhere(all_nodes == root_node)[0][
+            0]  # network.count_nodes() - 1 #self._all_nodes.index(root_node)
 
-        #curr_ = network.get_max_path(root_idx)[0]  # children[0]: root node
+        # curr_ = network.get_max_path(root_idx)[0]  # children[0]: root node
         curr_idx = root_idx
 
         pred_scope_tags_seq = []
@@ -413,7 +385,6 @@ class TSNetworkCompiler(NetworkCompiler):
             else:  # node_type == NodeType.Scope
                 pred_scope_tags_seq.append(node_arr)
 
-
         pred_scope_tags_seq = pred_scope_tags_seq[::-1]
 
         prediction = []
@@ -421,7 +392,7 @@ class TSNetworkCompiler(NetworkCompiler):
 
         for idx, node_arr in enumerate(pred_scope_tags_seq):
 
-            pos, node_type, label_id  = node_arr
+            pos, node_type, label_id = node_arr
             label = self.labels[label_id]
 
             if idx == len(pred_scope_tags_seq) - 1:
@@ -446,7 +417,7 @@ class TSNetworkCompiler(NetworkCompiler):
                 else:
                     pass
 
-            else: #A
+            else:  # A
 
                 if pos < size - 1:
 
@@ -455,14 +426,15 @@ class TSNetworkCompiler(NetworkCompiler):
                     elif next_label[0] == 'B':
                         pred_sentiment_scope_split.append(pos)
 
-
         inst.set_prediction(prediction)
         inst.pred_sentiment_scope_split = pred_sentiment_scope_split
         return inst
 
 
 class TSNeuralBuilder(NeuralBuilder):
-    def __init__(self, gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim, char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim = 200, dropout = 0.5):
+    def __init__(self, gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim,
+                 char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim,
+                 browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim=200, dropout=0.5):
         super().__init__(gnp)
 
         self.labels = labels
@@ -480,7 +452,7 @@ class TSNeuralBuilder(NeuralBuilder):
         self.use_discrete_features = use_discrete_features
 
         if use_discrete_features:
-            self.linear_dim = lstm_dim * 2 + self.postag_embed_dim + self.SENT_embed_dim + self.THER_SENT_embed_dim +  self.browncluster5_embed_dim + self.browncluster3_embed_dim
+            self.linear_dim = lstm_dim * 2 + self.postag_embed_dim + self.SENT_embed_dim + self.THER_SENT_embed_dim + self.browncluster5_embed_dim + self.browncluster3_embed_dim
         else:
             self.linear_dim = lstm_dim * 2
 
@@ -500,24 +472,22 @@ class TSNeuralBuilder(NeuralBuilder):
             from statnlp.features.char_lstm import CharBiLSTM
             self.char_bilstm = CharBiLSTM(char2id, chars, char_emb_size, charlstm_hidden_dim).to(NetworkConfig.DEVICE)
 
-
         # if SENT_embed_dim > 0:
         #     self.SENT_embeddings = nn.Embedding(SENT_emb_size, SENT_embed_dim).to(NetworkConfig.DEVICE)
 
         self.dropout = nn.Dropout(dropout).to(NetworkConfig.DEVICE)
 
-        embed_dim = word_embed_dim + char_emb_size # + postag_embed_dim+ SENT_embed_dim
+        embed_dim = word_embed_dim + char_emb_size  # + postag_embed_dim+ SENT_embed_dim
 
-        self.rnn = nn.LSTM(embed_dim, lstm_dim, batch_first=True, bidirectional=True, num_layers=1).to(NetworkConfig.DEVICE)
+        self.rnn = nn.LSTM(embed_dim, lstm_dim, batch_first=True, bidirectional=True, num_layers=1).to(
+            NetworkConfig.DEVICE)
 
         self.build_linear_layers()
-
 
     def build_linear_layers(self):
         self.linear = nn.Linear(self.linear_dim, self.label_size).to(NetworkConfig.DEVICE)
 
-
-    def load_pretrain(self, word2idx, path = None):
+    def load_pretrain(self, word2idx, path=None):
         emb = load_emb_glove(path, word2idx, self.word_embed_dim)
         self.word_embeddings.weight.data.copy_(torch.from_numpy(emb))
         self.word_embeddings = self.word_embeddings.to(NetworkConfig.DEVICE)
@@ -541,15 +511,13 @@ class TSNeuralBuilder(NeuralBuilder):
                                                               char_seq_len)  # batch_size, sent_len, char_hidden_dim
             word_rep.append(char_features)
 
-
-
         word_rep = torch.cat(word_rep, 2)
 
         lstm_outputs, _ = self.rnn(word_rep, None)
 
         lstm_outputs = lstm_outputs.squeeze(0)
 
-        #feature_output = [lstm_outputs]
+        # feature_output = [lstm_outputs]
 
         discrete_feature = []
 
@@ -559,8 +527,7 @@ class TSNeuralBuilder(NeuralBuilder):
                 discrete_embs = torch.zeros(size, embed_dim).to(NetworkConfig.DEVICE)
                 discrete_embs.scatter_(1, seq, 1.0)
                 discrete_feature.append(discrete_embs)
-                #return discrete_embs
-
+                # return discrete_embs
 
         if self.use_discrete_features:
             create_discrete_feature(instance.postag_seq, self.postag_embed_dim)
@@ -575,21 +542,18 @@ class TSNeuralBuilder(NeuralBuilder):
         return feature_output, word_rep, discrete_feature
 
     def build_nn_graph(self, instance):
-        lstm_outputs, _ , _ = self.build_features(instance)
+        lstm_outputs, _, _ = self.build_features(instance)
         nn_output = self.linear(lstm_outputs)
         return nn_output
-
 
     def get_nn_score(self, network, parent_k):
         parent_arr = network.get_node_array(parent_k)
         pos, node_type, label_id = parent_arr
 
         if node_type != NodeType.scope.value:  # Start, End
-            return self.zero#torch.tensor(0.0).to(NetworkConfig.DEVICE)
+            return self.zero  # torch.tensor(0.0).to(NetworkConfig.DEVICE)
         else:
             return network.nn_output[pos][label_id]
-
-
 
     def get_label_id(self, network, parent_k):
         parent_arr = network.get_node_array(parent_k)
@@ -600,17 +564,20 @@ class TSNeuralBuilder(NeuralBuilder):
             return -1
 
 
-
 class TSATTNeuralBuilder(TSNeuralBuilder):
-    def __init__(self, gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim, char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim = 200, dropout = 0.5):
-        super().__init__(gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim, char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim, dropout)
+    def __init__(self, gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim,
+                 char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim,
+                 browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim=200, dropout=0.5):
+        super().__init__(gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim,
+                         char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim,
+                         browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim, dropout)
         print('[Info] TSATTNeuralBuilder is initialized')
 
-    def init_attention(self, attention_type, attention_size = 100):
+    def init_attention(self, attention_type, attention_size=100):
         self.attention_type = attention_type
-        self.attention_size = self.linear_dim #attention_size
-        #0: no attention
-        #1: attention for each token in the targets
+        self.attention_size = self.linear_dim  # attention_size
+        # 0: no attention
+        # 1: attention for each token in the targets
         print('[Info] Initialize attention with attention type =', attention_type)
         if attention_type == 1:
             self.context_linear = nn.Linear(self.linear_dim * 2, self.attention_size).to(NetworkConfig.DEVICE)
@@ -618,11 +585,11 @@ class TSATTNeuralBuilder(TSNeuralBuilder):
             self.attention_linear = nn.Linear(self.linear_dim, len(self.polar2id)).to(NetworkConfig.DEVICE)
 
     def build_linear_layers(self):
-        self.e2id = {'B':0, 'M':1, 'E':2, 'S':3, 'O':4}
-        self.polar2id = {'+':0, '0':1, '-':2}
+        self.e2id = {'B': 0, 'M': 1, 'E': 2, 'S': 3, 'O': 4}
+        self.polar2id = {'+': 0, '0': 1, '-': 2}
 
         self.e_linear = nn.Linear(self.linear_dim, len(self.e2id)).to(NetworkConfig.DEVICE)
-        self.sent_linear = nn.Linear(self.linear_dim, len(self.polar2id)).to(NetworkConfig.DEVICE) # +, 0, -
+        self.sent_linear = nn.Linear(self.linear_dim, len(self.polar2id)).to(NetworkConfig.DEVICE)  # +, 0, -
         self.zero = torch.tensor(0.0).to(NetworkConfig.DEVICE)
 
     def build_attention(self, features):
@@ -633,12 +600,12 @@ class TSATTNeuralBuilder(TSNeuralBuilder):
                 curr_hidden = features[pos]  # hidden_size
                 curr_hidden = curr_hidden.view(1, hidden_size).expand(size, hidden_size)  # size * hidden_size
                 context = torch.cat([curr_hidden, features], 1)
-                context = self.context_linear(context) # size * attention_size
-                context = F.relu(context).transpose(0, 1) # attention_size * size
-                beta = self.attention_U @ context # 1 * size  #TODO: correct the way to multipty U with each element in context
-                beta = beta.squeeze(0) # size
-                alpha = F.softmax(beta, 0)  #size
-                alpha = alpha.view(size, 1).expand(size, hidden_size) #
+                context = self.context_linear(context)  # size * attention_size
+                context = F.relu(context).transpose(0, 1)  # attention_size * size
+                beta = self.attention_U @ context  # 1 * size  #TODO: correct the way to multipty U with each element in context
+                beta = beta.squeeze(0)  # size
+                alpha = F.softmax(beta, 0)  # size
+                alpha = alpha.view(size, 1).expand(size, hidden_size)  #
                 sent = alpha * features  # size * hidden_size #TODO: correct the way to multipy alpha[i] by lstm_outputs[i]
                 sent = torch.sum(sent, 0)  # hidden_size
                 sent = self.attention_linear(sent)
@@ -650,9 +617,8 @@ class TSATTNeuralBuilder(TSNeuralBuilder):
         else:
             return None
 
-
     def build_nn_graph(self, instance):
-        lstm_outputs, word_rep, discrete_feature = self.build_features(instance) #sent_len * hidden_size
+        lstm_outputs, word_rep, discrete_feature = self.build_features(instance)  # sent_len * hidden_size
         nn_output_e_linear = self.e_linear(lstm_outputs)
         nn_output_sent_linear = self.sent_linear(lstm_outputs)
         nn_attention = self.build_attention(lstm_outputs)
@@ -664,7 +630,7 @@ class TSATTNeuralBuilder(TSNeuralBuilder):
         pos, node_type, label_id = parent_arr
 
         if node_type != NodeType.scope.value:  # Start, End
-            return self.zero #torch.tensor(0.0).to(NetworkConfig.DEVICE)
+            return self.zero  # torch.tensor(0.0).to(NetworkConfig.DEVICE)
         else:
             nn_output_e_linear, nn_output_sent_linear, nn_attention = network.nn_output
             label = self.labels[label_id]
@@ -674,23 +640,21 @@ class TSATTNeuralBuilder(TSNeuralBuilder):
             if scope_tag[0] == 'e':
                 target_score = nn_output_e_linear[pos][self.e2id[scope_tag[1]]]
 
-                sent_score = 0 #nn_output_sent_linear[pos][polar_tag_id]
+                sent_score = 0  # nn_output_sent_linear[pos][polar_tag_id]
 
                 if self.attention_type == 1:
                     sent_score = sent_score + nn_attention[pos][polar_tag_id]
 
-
                 return target_score + sent_score
-            else: #B A
+            else:  # B A
                 if scope_tag == 'Be':
-                    return self.zero #torch.tensor(0.0).to(NetworkConfig.DEVICE)
+                    return self.zero  # torch.tensor(0.0).to(NetworkConfig.DEVICE)
                 else:
                     target_score = 0
                     if self.attention_type == 1:
                         target_score = target_score + nn_output_e_linear[pos][self.e2id['O']]
                     sent_score = nn_output_sent_linear[pos][polar_tag_id]
                     return target_score + sent_score
-
 
 
 class Attention(nn.Module):
@@ -702,7 +666,6 @@ class Attention(nn.Module):
 
         self.u = nn.Parameter(torch.randn(output_size, 1)).to(NetworkConfig.DEVICE)
         nn.init.xavier_uniform_(self.u)
-
 
     def forward(self, h, attention):
         m_combine = torch.cat([attention for _ in range(h.size(0))], 0)
@@ -717,48 +680,45 @@ class Attention(nn.Module):
 
         return s
 
+
 class TSSELFATTNeuralBuilder(TSNeuralBuilder):
-    def __init__(self, gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim, char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim = 200, dropout = 0.5):
-        super().__init__(gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim, char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim, dropout)
+    def __init__(self, gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim,
+                 char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim,
+                 browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim=200, dropout=0.5):
+        super().__init__(gnp, labels, use_discrete_features, voc_size, word_embed_dim, postag_size, postag_embed_dim,
+                         char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, THER_SENT_embed_dim,
+                         browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim, dropout)
 
         self.attention = Attention(self.attention_output_dim, self.attention_output_dim)
 
         print('[Info] TSSELFATTNeuralBuilder is initialized')
 
-
     def init_attention(self, attention_type, attention_size):
         pass
 
-
-
     def build_linear_layers(self):
 
-
-
-
-        self.e2id = {'B':0, 'M':1, 'E':2, 'S':3, 'O':4}
-        self.polar2id = {'+':0, '0':1, '-':2}
-
+        self.e2id = {'B': 0, 'M': 1, 'E': 2, 'S': 3, 'O': 4}
+        self.polar2id = {'+': 0, '0': 1, '-': 2}
 
         if self.use_discrete_features:
             self.linear_dim = self.lstm_dim * 2 + self.postag_embed_dim + self.SENT_embed_dim + self.THER_SENT_embed_dim + self.browncluster5_embed_dim + self.browncluster3_embed_dim + 2
-            self.attention_output_dim = self.word_embed_dim + self.char_emb_size + self.SENT_embed_dim + self.THER_SENT_embed_dim # + self.postag_embed_dim
+            self.attention_output_dim = self.word_embed_dim + self.char_emb_size + self.SENT_embed_dim + self.THER_SENT_embed_dim  # + self.postag_embed_dim
         else:
-            self.linear_dim = self.lstm_dim * 2 #+ self.postag_embed_dim + self.SENT_embed_dim + self.THER_SENT_embed_dim + self.browncluster5_embed_dim + self.browncluster3_embed_dim
-            self.attention_output_dim = self.word_embed_dim + self.char_emb_size #+ self.SENT_embed_dim + self.THER_SENT_embed_dim
+            self.linear_dim = self.lstm_dim * 2  # + self.postag_embed_dim + self.SENT_embed_dim + self.THER_SENT_embed_dim + self.browncluster5_embed_dim + self.browncluster3_embed_dim
+            self.attention_output_dim = self.word_embed_dim + self.char_emb_size  # + self.SENT_embed_dim + self.THER_SENT_embed_dim
 
         self.e_linear = nn.Linear(self.linear_dim, len(self.e2id)).to(NetworkConfig.DEVICE)
         nn.init.xavier_uniform_(self.e_linear.weight)
-        self.sent_linear = nn.Linear(self.linear_dim, len(self.polar2id)).to(NetworkConfig.DEVICE) # +, 0, -
+        self.sent_linear = nn.Linear(self.linear_dim, len(self.polar2id)).to(NetworkConfig.DEVICE)  # +, 0, -
         nn.init.xavier_uniform_(self.sent_linear.weight)
 
-        #self.linear = nn.Linear(self.encoder_output_dim, self.label_size).to(NetworkConfig.DEVICE)
+        # self.linear = nn.Linear(self.encoder_output_dim, self.label_size).to(NetworkConfig.DEVICE)
 
         self.att2label = nn.Linear(self.attention_output_dim, len(self.polar2id), bias=True).to(NetworkConfig.DEVICE)
         nn.init.xavier_uniform_(self.att2label.weight)
 
         self.zero = torch.tensor(0.0).to(NetworkConfig.DEVICE)
-
 
     def build_word_repr(self, instance):
         word_seq = instance.word_seq.unsqueeze(0)
@@ -769,12 +729,12 @@ class TSSELFATTNeuralBuilder(TSNeuralBuilder):
         if self.char_emb_size > 0:
             char_seq_tensor = instance.char_seq_tensor.unsqueeze(0)
             char_seq_len = instance.char_seq_len.unsqueeze(0)
-            char_features = self.char_bilstm.get_last_hiddens(char_seq_tensor, char_seq_len)  # batch_size, sent_len, char_hidden_dim
+            char_features = self.char_bilstm.get_last_hiddens(char_seq_tensor,
+                                                              char_seq_len)  # batch_size, sent_len, char_hidden_dim
             word_rep.append(char_features)
 
         word_rep = torch.cat(word_rep, 2)
         return word_rep
-
 
     def build_attention_encoder(self, features):
         size, hidden_size = features.size()
@@ -799,7 +759,6 @@ class TSSELFATTNeuralBuilder(TSNeuralBuilder):
 
         discrete_feature = []
 
-
         def create_discrete_feature(seq, embed_dim):
             if embed_dim > 0:
                 seq = seq.unsqueeze(0).view(size, 1)
@@ -819,8 +778,8 @@ class TSSELFATTNeuralBuilder(TSNeuralBuilder):
         feature_output = [lstm_outputs] + discrete_feature
         feature_output = torch.cat(feature_output, 1)
 
-
         discrete_feature_for_attention = []
+
         def create_discrete_feature_for_attention(seq, embed_dim):
             if embed_dim > 0:
                 seq = seq.unsqueeze(0).view(size, 1)
@@ -833,19 +792,18 @@ class TSSELFATTNeuralBuilder(TSNeuralBuilder):
             create_discrete_feature_for_attention(instance.THER_SENT_seq, self.THER_SENT_embed_dim)
             pass
 
-
         attention_input = [word_rep.squeeze(0)] + discrete_feature_for_attention
         attention_input = torch.cat(attention_input, 1)
-        attention_output = self.build_attention_encoder(attention_input) #word_rep.squeeze(0)
-
+        attention_output = self.build_attention_encoder(attention_input)  # word_rep.squeeze(0)
 
         return feature_output, attention_output, word_rep, discrete_feature
 
     def build_nn_graph(self, instance):
-        feature_output, attention_output, word_rep, discrete_feature = self.build_features(instance) #sent_len * hidden_size
+        feature_output, attention_output, word_rep, discrete_feature = self.build_features(
+            instance)  # sent_len * hidden_size
         nn_output_e_linear = self.e_linear(feature_output)
         nn_output_sent_linear = self.sent_linear(feature_output)
-        nn_linear = None #self.linear(encoder_outputs)
+        nn_linear = None  # self.linear(encoder_outputs)
         nn_att_linear = self.att2label(attention_output) / 2
         nn_output = (nn_output_e_linear, nn_output_sent_linear, nn_linear, nn_att_linear)
         return nn_output
@@ -855,7 +813,7 @@ class TSSELFATTNeuralBuilder(TSNeuralBuilder):
         pos, node_type, label_id = parent_arr
 
         if node_type != NodeType.scope.value:  # Start, End
-            return self.zero #torch.tensor(0.0).to(NetworkConfig.DEVICE)
+            return self.zero  # torch.tensor(0.0).to(NetworkConfig.DEVICE)
         else:
             nn_output_e_linear, nn_output_sent_linear, nn_linear, nn_att_linear = network.nn_output
 
@@ -867,7 +825,7 @@ class TSSELFATTNeuralBuilder(TSNeuralBuilder):
             if scope_tag[0] == 'e':
                 target_score = nn_output_e_linear[pos][self.e2id[scope_tag[1]]]
 
-                sent_score = 0 #nn_output_sent_linear[pos][polar_tag_id]
+                sent_score = 0  # nn_output_sent_linear[pos][polar_tag_id]
 
                 if scope_tag == 'eA':
                     sent_score = sent_score + nn_att_linear[pos][polar_tag_id]
@@ -876,9 +834,9 @@ class TSSELFATTNeuralBuilder(TSNeuralBuilder):
                 #     sent_score = sent_score + nn_attention[pos][polar_tag_id]
 
                 return target_score + sent_score
-            else: #B A
+            else:  # B A
                 if scope_tag == 'Be':
-                    return nn_att_linear[pos][polar_tag_id] #self.zero #torch.tensor(0.0).to(NetworkConfig.DEVICE)
+                    return nn_att_linear[pos][polar_tag_id]  # self.zero #torch.tensor(0.0).to(NetworkConfig.DEVICE)
                 else:
                     target_score = 0
                     # if self.attention_type == 1:
@@ -887,10 +845,8 @@ class TSSELFATTNeuralBuilder(TSNeuralBuilder):
                     return target_score + sent_score
 
 
-
-
 class TSReader():
-    Stats = {'MAX_WORD_LENGTH':0}
+    Stats = {'MAX_WORD_LENGTH': 0}
 
     @staticmethod
     def read_insts(file, is_labeled, number):
@@ -926,6 +882,7 @@ class TSReader():
                 word = re.sub('\d', '0', word)
 
                 FLAGS = re.MULTILINE | re.DOTALL
+
                 def re_sub(pattern, repl):
                     return re.sub(pattern, repl, word, flags=FLAGS)
 
@@ -953,7 +910,7 @@ class TSReader():
                 tag = fields[-1]
                 postag = fields[-2]
                 THER_SENT_3 = fields[-4]
-                SENT =  fields[-5] #if fields[-5] == "_" else fields[-5].split(':')[1]
+                SENT = fields[-5]  # if fields[-5] == "_" else fields[-5].split(':')[1]
                 browncluster5 = fields[2]
                 jerbo = fields[3]
                 browncluster3 = fields[4]
@@ -968,8 +925,6 @@ class TSReader():
                     except:
                         print()
 
-
-
                 inputs.append((word, postag, SENT, THER_SENT_3, browncluster5, jerbo, browncluster3))
                 outputs.append(output)
 
@@ -979,7 +934,7 @@ class TSReader():
 
 
 class TScore(Score):
-    def __init__(self, compare_type = 0, accumulated = False):
+    def __init__(self, compare_type=0, accumulated=False):
         self.target_fscore = FScore(0.0, 0.0, 0.0)
         self.sentiment_fscore = FScore(0.0, 0.0, 0.0)
         self.compare_type = compare_type
@@ -992,7 +947,7 @@ class TScore(Score):
         self.sentiment_fscore = sentiment_fscore
 
     def __str__(self):
-        target_score =  str(self.target_fscore)
+        target_score = str(self.target_fscore)
         sentiment_score = str(self.sentiment_fscore)
         return 'Target: ' + target_score + '\tSent:' + sentiment_score
 
@@ -1004,10 +959,12 @@ class TScore(Score):
             return self.target_fscore.fscore > obj.target_fscore.fscore and self.sentiment_fscore.fscore > obj.sentiment_fscore.fscore
         elif self.compare_type == 1:
             sentiment_fscore_diff = self.sentiment_fscore.fscore - obj.sentiment_fscore.fscore
-            return self.target_fscore.fscore > obj.target_fscore.fscore if math.fabs(sentiment_fscore_diff) < 1e-8 else sentiment_fscore_diff > 0
-        else: #self.compare_type == 1:
+            return self.target_fscore.fscore > obj.target_fscore.fscore if math.fabs(
+                sentiment_fscore_diff) < 1e-8 else sentiment_fscore_diff > 0
+        else:  # self.compare_type == 1:
             target_score_diff = self.target_fscore.fscore - obj.target_fscore.fscore
-            return self.sentiment_fscore.fscore > obj.sentiment_fscore.fscore if math.fabs(target_score_diff) < 1e-8 else target_score_diff > 0
+            return self.sentiment_fscore.fscore > obj.sentiment_fscore.fscore if math.fabs(
+                target_score_diff) < 1e-8 else target_score_diff > 0
 
     def update_score(self, obj):
         self.target_fscore.update_score(obj.target_fscore)
@@ -1023,7 +980,7 @@ class TScore(Score):
         # self.target_fscore = self.target_fscore + obj.target_fscore
         # self.sentiment_fscore = self.sentiment_fscore + obj.sentiment_fscore
 
-    def get_average(self, indices = None):
+    def get_average(self, indices=None):
 
         if indices == None:
             indices = list(range(len(self.fold_rets)))
@@ -1042,7 +999,7 @@ class TScore(Score):
 
 class sentimentscope_eval(Eval):
 
-    def __init__(self, compare_type = 0):
+    def __init__(self, compare_type=0):
         super().__init__()
         self.result_path_prefix = 'tmp/result'
         self.compare_type = compare_type
@@ -1050,15 +1007,14 @@ class sentimentscope_eval(Eval):
     def set_result_path_prefix(self, path_prefix):
         self.result_path_prefix = path_prefix
 
-
     def eval_by_script(self, output_filename: str) -> FScore:
         cmdline = ["perl", "scripts/conlleval.pl"]
         cmd = subprocess.Popen(cmdline, stdin=open(output_filename, 'r', encoding='utf-8'), stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)
         stdout, stderr = cmd.communicate()
 
-        ret =  stdout.decode("utf-8").split('\n')
-        #print(stdout.decode("utf-8"))
+        ret = stdout.decode("utf-8").split('\n')
+        # print(stdout.decode("utf-8"))
 
         p, r, f1 = 0.0, 0.0, 0.0
 
@@ -1077,11 +1033,10 @@ class sentimentscope_eval(Eval):
         fscore = FScore(p, r, f1)
         return fscore
 
-
     def eval(self, insts):
 
-        result_target_file = self.result_path_prefix + '_target.txt' #'tmp/result_target.txt'
-        result_sent_file = self.result_path_prefix +  '_sent.txt' #tmp/result_sent.txt'
+        result_target_file = self.result_path_prefix + '_target.txt'  # 'tmp/result_target.txt'
+        result_sent_file = self.result_path_prefix + '_sent.txt'  # tmp/result_sent.txt'
 
         f_target = open(result_target_file, 'w', encoding='utf-8')
         f_sent = open(result_sent_file, 'w', encoding='utf-8')
@@ -1098,7 +1053,7 @@ class sentimentscope_eval(Eval):
             sent_gold = [item[0] + '-' + symbol2polar[item[1]] if item[0][0] != 'O' else 'O' for item in gold]
             sent_pred = [item[0] + '-' + symbol2polar[item[1]] if item[0][0] != 'O' else 'O' for item in pred]
 
-            words = [word for word, _, _, _, _, _ ,_ in input]
+            words = [word for word, _, _, _, _, _, _ in input]
 
             target_lines = list(zip(words, target_gold, target_pred))
             sent_lines = list(zip(words, sent_gold, sent_pred))
@@ -1111,7 +1066,6 @@ class sentimentscope_eval(Eval):
 
         f_target.close()
         f_sent.close()
-
 
         target_ret = self.eval_by_script(result_target_file)
         sent_ret = self.eval_by_script(result_sent_file)
@@ -1134,6 +1088,7 @@ if __name__ == "__main__":
     if not os.path.exists('result'):
         os.mkdir('result')
 
+
     # train_file = "data/ts/train.1.conll.train_test"
     # dev_file = "data/ts/test.1.conll.train_test"
 
@@ -1142,9 +1097,11 @@ if __name__ == "__main__":
         ATT = 1
         SELFATT = 2
 
+
     import argparse
+
     parser = argparse.ArgumentParser()
-    #subparsers = parser.add_subparsers()
+    # subparsers = parser.add_subparsers()
 
     # subparser = subparsers.add_parser("train")
     # subparser.set_defaults(callback=run_train)
@@ -1153,7 +1110,7 @@ if __name__ == "__main__":
     parser.add_argument("--numpy-seed", type=int, default=9997)
     parser.add_argument("--begin-index", type=int, default=1)
     parser.add_argument("--end-index", type=int, default=10)
-    parser.add_argument("--lang", choices=["en", "es"], default='en') #
+    parser.add_argument("--lang", choices=["en", "es"], default='en')  #
     parser.add_argument("--tag-embedding-dim", type=int, default=50)
     parser.add_argument("--word-embedding-dim", type=int, default=100)
     parser.add_argument("--char-embedding-dim", type=int, default=50)
@@ -1163,7 +1120,7 @@ if __name__ == "__main__":
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--trial", action="store_true")
     parser.add_argument("--use-discrete-feature", action="store_true")
-    #parser.add_argument("--model-path-base", required=True)
+    # parser.add_argument("--model-path-base", required=True)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--gpuid", type=int, default=0)
@@ -1175,9 +1132,7 @@ if __name__ == "__main__":
     parser.add_argument("--emb-sp", default="lample64")
     parser.add_argument("--weight-decay", type=float, default=0.0)
 
-
     args = parser.parse_args()
-
 
     embs_en = {}
     embs_en['glove100'] = ('embedding/glove.6B.100d.txt', 100)
@@ -1187,11 +1142,10 @@ if __name__ == "__main__":
     embs_sp['glove300'] = ('embedding/glove-sbwc.i25.vec', 300)
     embs_sp['lample64'] = ('embedding/spanish.64d.txt', 64)
 
-
     seed = args.numpy_seed
     lang = args.lang
     TRIAL = args.trial
-    fold_start_idx = args.begin_index #1
+    fold_start_idx = args.begin_index  # 1
     fold_end_idx = args.end_index if not TRIAL else 1
     num_train = -1
     num_dev = -1
@@ -1204,12 +1158,12 @@ if __name__ == "__main__":
     emb = embs_en['glove100'] if lang == 'en' else embs_sp[args.emb_sp]
     embed_path = emb[0]
     word_embed_dim = emb[1]
-    postag_embed_dim = 0 # args.tag_embedding_dim
+    postag_embed_dim = 0  # args.tag_embedding_dim
     char_embed_dim = args.char_embedding_dim
     SENT_embed_dim = 0
     THER_SENT_embed_dim = 0
-    lstm_dim = args.lstm_dim #word_embed_dim + char_embed_dim + 100
-    check_every = args.check_every #700 if lang == 'en' else 1500
+    lstm_dim = args.lstm_dim  # word_embed_dim + char_embed_dim + 100
+    check_every = args.check_every  # 700 if lang == 'en' else 1500
     SEPARATE_DEV_FROM_TRAIN = True
     APPEND_START_END = False
     NetworkConfig.ECHO_TEST_RESULT_DURING_EVAL_ON_DEV = True
@@ -1220,12 +1174,10 @@ if __name__ == "__main__":
     attention_size = lstm_dim
     compare_type = args.compare_type
     weight_decay = args.weight_decay
-    model_name = args.modelname #+ '_' + neural_builder_type.name
+    model_name = args.modelname  # + '_' + neural_builder_type.name
     use_discrete_feature = args.use_discrete_feature
 
     print(args)
-
-
 
     overall_score = TScore(accumulated=True)
     for num_fold in range(fold_start_idx, fold_end_idx + 1):
@@ -1247,7 +1199,6 @@ if __name__ == "__main__":
         dev_file = test_file
         trial_file = "data/ts/trial.txt"
         model_path = 'result/' + model_name + '_' + lang + '_' + num_fold_str + ".pt"
-
 
         if TRIAL == True:
             data_size = -1
@@ -1273,12 +1224,11 @@ if __name__ == "__main__":
         dev_insts = TSReader.read_insts(dev_file, False, num_dev)
         test_insts = TSReader.read_insts(test_file, False, num_test)
 
-
-        vocab2id = {PAD:0, UNK:1}
-        postag2id = {PAD:0, UNK:1}
-        char2id = {PAD:0, UNK:1}
-        SENT2id = {PAD:0, UNK:1}
-        THER_SENT2id = {PAD:0, UNK:1}
+        vocab2id = {PAD: 0, UNK: 1}
+        postag2id = {PAD: 0, UNK: 1}
+        char2id = {PAD: 0, UNK: 1}
+        SENT2id = {PAD: 0, UNK: 1}
+        THER_SENT2id = {PAD: 0, UNK: 1}
 
         browncluster52id = {PAD: 0, UNK: 1}
         browncluster32id = {PAD: 0, UNK: 1}
@@ -1292,17 +1242,15 @@ if __name__ == "__main__":
             for polar in polar_tags:
                 label2id[scope_tag + polar] = len(label2id)
 
-
         labels = [None] * (len(label2id))
         for key in label2id:
             labels[label2id[key]] = key
 
         if DEBUG:
-            print('label2id:',list(label2id.keys()))
+            print('label2id:', list(label2id.keys()))
             print('postag2id:', list(postag2id.keys()))
 
-
-        for inst in train_insts:  #+ dev_insts + test_insts:
+        for inst in train_insts:  # + dev_insts + test_insts:
             for word, postag, SENT, THER_SENT_3, browncluster5, jerbo, browncluster3 in inst.input:
                 if word not in vocab2id:
                     vocab2id[word] = len(vocab2id)
@@ -1317,13 +1265,11 @@ if __name__ == "__main__":
                 if SENT not in SENT2id:
                     SENT2id[SENT] = len(SENT2id)
 
-
                 if THER_SENT_3 not in THER_SENT2id:
                     THER_SENT2id[THER_SENT_3] = len(THER_SENT2id)
 
                 if browncluster5 not in browncluster52id:
                     browncluster52id[browncluster5] = len(browncluster52id)
-
 
                 if browncluster3 not in browncluster32id:
                     browncluster32id[browncluster3] = len(browncluster32id)
@@ -1331,14 +1277,11 @@ if __name__ == "__main__":
                 if jerbo not in jerbo2id:
                     jerbo2id[jerbo] = len(jerbo2id)
 
-
-
         SENT_embed_dim = len(SENT2id)
         THER_SENT_embed_dim = len(THER_SENT2id)
-        #postag_embed_dim = len(postag2id)
+        # postag_embed_dim = len(postag2id)
         browncluster5_embed_dim = len(browncluster52id)
         browncluster3_embed_dim = len(browncluster32id)
-
 
         chars = [None] * len(char2id)
         for key in char2id:
@@ -1347,24 +1290,34 @@ if __name__ == "__main__":
         max_word_length = TSReader.Stats['MAX_WORD_LENGTH']
         print(colored('MAX_WORD_LENGTH:', 'blue'), TSReader.Stats['MAX_WORD_LENGTH'])
 
-
-        for inst in train_insts: # + dev_insts + test_insts:
+        for inst in train_insts:  # + dev_insts + test_insts:
             input_seq = inst.input
-            inst.word_seq = torch.tensor([vocab2id[word] for word, _ , _ , _, _, _, _ in input_seq]).to(NetworkConfig.DEVICE)
+            inst.word_seq = torch.tensor([vocab2id[word] for word, _, _, _, _, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
 
-            inst.first_upper_seq = torch.tensor([int(word[0].isupper()) for word, _, _, _, _, _, _ in input_seq]).to(NetworkConfig.DEVICE)
+            inst.first_upper_seq = torch.tensor([int(word[0].isupper()) for word, _, _, _, _, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
 
-            inst.postag_seq = torch.tensor([postag2id[postag] for _, postag, _, _, _, _, _ in input_seq]).to(NetworkConfig.DEVICE)
-            char_seq_list = [[char2id[ch] for ch in word] + [char2id[PAD]] * (max_word_length - len(word)) for word, _ , _ , _, _, _, _  in input_seq]
+            inst.postag_seq = torch.tensor([postag2id[postag] for _, postag, _, _, _, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
+            char_seq_list = [[char2id[ch] for ch in word] + [char2id[PAD]] * (max_word_length - len(word)) for
+                             word, _, _, _, _, _, _ in input_seq]
             inst.char_seq_tensor = torch.tensor(char_seq_list).to(NetworkConfig.DEVICE)
             # char_seq_tensor: (1, sent_len, word_length)
-            inst.char_seq_len = torch.tensor([len(word) for word, _ , _ , _, _, _, _ in input_seq]).to(NetworkConfig.DEVICE)
+            inst.char_seq_len = torch.tensor([len(word) for word, _, _, _, _, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
             # char_seq_len: (1, sent_len)
-            inst.SENT_seq = torch.tensor([SENT2id[SENT] for _, _, SENT, _ ,_, _, _ in input_seq]).to(NetworkConfig.DEVICE)
-            inst.THER_SENT_seq = torch.tensor([THER_SENT2id[THER_SENT_3] for _, _, _,  THER_SENT_3, _, _, _ in input_seq]).to(NetworkConfig.DEVICE)
+            inst.SENT_seq = torch.tensor([SENT2id[SENT] for _, _, SENT, _, _, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
+            inst.THER_SENT_seq = torch.tensor(
+                [THER_SENT2id[THER_SENT_3] for _, _, _, THER_SENT_3, _, _, _ in input_seq]).to(NetworkConfig.DEVICE)
 
-            inst.browncluster5_seq = torch.tensor([browncluster52id[browncluster5] for _, _, _, _, browncluster5, _, _ in input_seq]).to(NetworkConfig.DEVICE)
-            inst.browncluster3_seq = torch.tensor([browncluster32id[browncluster3] for _, _, _, _, _, _, browncluster3 in input_seq]).to(NetworkConfig.DEVICE)
+            inst.browncluster5_seq = torch.tensor(
+                [browncluster52id[browncluster5] for _, _, _, _, browncluster5, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
+            inst.browncluster3_seq = torch.tensor(
+                [browncluster32id[browncluster3] for _, _, _, _, _, _, browncluster3 in input_seq]).to(
+                NetworkConfig.DEVICE)
 
         if SEPARATE_DEV_FROM_TRAIN:
             old_train_insts = list(train_insts)
@@ -1376,38 +1329,62 @@ if __name__ == "__main__":
             for inst in dev_insts:
                 inst.is_labeled = False
 
-
         for inst in dev_insts + test_insts:
             input_seq = inst.input
-            inst.word_seq = torch.tensor([vocab2id[word] if word in vocab2id else vocab2id[UNK] for word, _, _, _, _, _ ,_ in input_seq]).to(NetworkConfig.DEVICE)
+            inst.word_seq = torch.tensor(
+                [vocab2id[word] if word in vocab2id else vocab2id[UNK] for word, _, _, _, _, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
 
             inst.first_upper_seq = torch.tensor([int(word[0].isupper()) for word, _, _, _, _, _, _ in input_seq]).to(
                 NetworkConfig.DEVICE)
 
-            inst.postag_seq = torch.tensor([postag2id[postag] if word in postag2id else postag2id[UNK] for _, postag, _, _, _, _ ,_ in input_seq]).to(NetworkConfig.DEVICE)
-            char_seq_list = [[char2id[ch] if ch in char2id else char2id[UNK] for ch in word] + [char2id[PAD]] * (max_word_length - len(word)) for word, _, _, _, _, _ ,_ in input_seq]
+            inst.postag_seq = torch.tensor(
+                [postag2id[postag] if word in postag2id else postag2id[UNK] for _, postag, _, _, _, _, _ in
+                 input_seq]).to(NetworkConfig.DEVICE)
+            char_seq_list = [[char2id[ch] if ch in char2id else char2id[UNK] for ch in word] + [char2id[PAD]] * (
+                        max_word_length - len(word)) for word, _, _, _, _, _, _ in input_seq]
             inst.char_seq_tensor = torch.tensor(char_seq_list).to(NetworkConfig.DEVICE)
             # char_seq_tensor: (1, sent_len, word_length)
-            inst.char_seq_len = torch.tensor([len(word) for word, _, _, _, _, _ ,_ in input_seq]).to(NetworkConfig.DEVICE)
-            inst.SENT_seq = torch.tensor([SENT2id[SENT] if SENT in SENT2id else SENT2id[UNK] for _, _, SENT, _, _, _ ,_ in input_seq]).to(NetworkConfig.DEVICE)
-            inst.THER_SENT_seq = torch.tensor([THER_SENT2id[THER_SENT_3] if THER_SENT_3 in THER_SENT2id else THER_SENT2id[UNK] for _, _, _, THER_SENT_3, _, _ ,_ in input_seq]).to(NetworkConfig.DEVICE)
+            inst.char_seq_len = torch.tensor([len(word) for word, _, _, _, _, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
+            inst.SENT_seq = torch.tensor(
+                [SENT2id[SENT] if SENT in SENT2id else SENT2id[UNK] for _, _, SENT, _, _, _, _ in input_seq]).to(
+                NetworkConfig.DEVICE)
+            inst.THER_SENT_seq = torch.tensor(
+                [THER_SENT2id[THER_SENT_3] if THER_SENT_3 in THER_SENT2id else THER_SENT2id[UNK] for
+                 _, _, _, THER_SENT_3, _, _, _ in input_seq]).to(NetworkConfig.DEVICE)
             # char_seq_len: (1, sent_len)
 
-            inst.browncluster5_seq = torch.tensor([browncluster52id[browncluster5] if browncluster5 in browncluster52id else browncluster52id[UNK] for _, _, _, _, browncluster5, _, _ in input_seq]).to(NetworkConfig.DEVICE)
-            inst.browncluster3_seq = torch.tensor([browncluster32id[browncluster3] if browncluster3 in browncluster32id else browncluster32id[UNK] for _, _, _, _, _, _, browncluster3 in input_seq]).to(NetworkConfig.DEVICE)
+            inst.browncluster5_seq = torch.tensor(
+                [browncluster52id[browncluster5] if browncluster5 in browncluster52id else browncluster52id[UNK] for
+                 _, _, _, _, browncluster5, _, _ in input_seq]).to(NetworkConfig.DEVICE)
+            inst.browncluster3_seq = torch.tensor(
+                [browncluster32id[browncluster3] if browncluster3 in browncluster32id else browncluster32id[UNK] for
+                 _, _, _, _, _, _, browncluster3 in input_seq]).to(NetworkConfig.DEVICE)
 
         print('Train:', len(train_insts), '\tDev:', len(dev_insts), '\tTest:', len(test_insts))
 
         gnp = TensorGlobalNetworkParam()
         if neural_builder_type == TSNeuralBuilderType.VANILLA:
-            neural_builder =    TSNeuralBuilder(gnp, labels, use_discrete_feature, len(vocab2id), word_embed_dim, len(postag2id), postag_embed_dim, char_embed_dim, char_embed_dim, len(SENT2id) ,SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim = lstm_dim, dropout=args.dropout)
+            neural_builder = TSNeuralBuilder(gnp, labels, use_discrete_feature, len(vocab2id), word_embed_dim,
+                                             len(postag2id), postag_embed_dim, char_embed_dim, char_embed_dim,
+                                             len(SENT2id), SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim,
+                                             browncluster3_embed_dim, lstm_dim=lstm_dim, dropout=args.dropout)
         elif neural_builder_type == TSNeuralBuilderType.ATT:
-            neural_builder = TSATTNeuralBuilder(gnp, labels, use_discrete_feature, len(vocab2id), word_embed_dim, len(postag2id), postag_embed_dim, char_embed_dim, char_embed_dim, len(SENT2id), SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim = lstm_dim, dropout=args.dropout)
+            neural_builder = TSATTNeuralBuilder(gnp, labels, use_discrete_feature, len(vocab2id), word_embed_dim,
+                                                len(postag2id), postag_embed_dim, char_embed_dim, char_embed_dim,
+                                                len(SENT2id), SENT_embed_dim, THER_SENT_embed_dim,
+                                                browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim=lstm_dim,
+                                                dropout=args.dropout)
             neural_builder.init_attention(attention_type, attention_size)
         elif neural_builder_type == TSNeuralBuilderType.SELFATT:
-            neural_builder = TSSELFATTNeuralBuilder(gnp, labels, use_discrete_feature, len(vocab2id), word_embed_dim, len(postag2id), postag_embed_dim, char_embed_dim, char_embed_dim, len(SENT2id), SENT_embed_dim, THER_SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim = lstm_dim, dropout=args.dropout)
+            neural_builder = TSSELFATTNeuralBuilder(gnp, labels, use_discrete_feature, len(vocab2id), word_embed_dim,
+                                                    len(postag2id), postag_embed_dim, char_embed_dim, char_embed_dim,
+                                                    len(SENT2id), SENT_embed_dim, THER_SENT_embed_dim,
+                                                    browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim=lstm_dim,
+                                                    dropout=args.dropout)
             neural_builder.init_attention(attention_type, attention_size)
-        else:#gnp, labels, voc_size, word_embed_dim, postag_size, postag_embed_dim, char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim, dropout)
+        else:  # gnp, labels, voc_size, word_embed_dim, postag_size, postag_embed_dim, char_emb_size, charlstm_hidden_dim, SENT_emb_size, SENT_embed_dim, browncluster5_embed_dim, browncluster3_embed_dim, lstm_dim, dropout)
             print('Unsupported TS Neural Builder Type')
             exit()
 
@@ -1421,12 +1398,13 @@ if __name__ == "__main__":
 
         if visual:
             from statnlp.hypergraph import Visualizer
+
+
             class TSVisualizer(Visualizer):
                 def __init__(self, compiler, fm, labels):
                     super().__init__(compiler, fm)
                     self.labels = labels
                     self.span = 50
-
 
                 def nodearr2label(self, node_arr):
                     if node_arr[1] == 1:
@@ -1436,13 +1414,12 @@ if __name__ == "__main__":
                         if label == 'eM0':
                             return self.input[node_arr[0]][0]
                         else:
-                            return self.labels[node_arr[2]] #+ ' ' + str(node_arr)
+                            return self.labels[node_arr[2]]  # + ' ' + str(node_arr)
                     else:
                         if node_arr[1] == 0:
                             return "<X>"
                         else:
                             return "<Root>"
-
 
                 def nodearr2color(self, node_arr):
                     if node_arr[1] == 1:
@@ -1456,7 +1433,6 @@ if __name__ == "__main__":
                             return 'green'
                     else:
                         return 'blue'
-
 
                 def nodearr2coord(self, node_arr):
                     span = self.span
@@ -1493,10 +1469,10 @@ if __name__ == "__main__":
                                     y -= 0
                                 elif label[3] == '0':
                                     y -= 6
-                                else: #label[2] == '-':
+                                else:  # label[2] == '-':
                                     y -= 12
 
-                        else: #label[0] == 'e':
+                        else:  # label[0] == 'e':
                             if label[1] == 'B':
                                 y += 6
                             elif label[1] == 'M':
@@ -1506,15 +1482,16 @@ if __name__ == "__main__":
                             else:
                                 y -= 6
 
-
                         return (x, y)
 
 
                     else:
                         if node_arr[1] == 0:
-                            return (-1 * span , 0.0)
+                            return (-1 * span, 0.0)
                         else:
                             return (node_arr[0] * span, 0.0)
+
+
             ts_visualizer = TSVisualizer(compiler, neural_builder, labels)
             inst = train_insts[0]
             inst.is_labeled = True
@@ -1526,7 +1503,7 @@ if __name__ == "__main__":
         else:
             model.learn_batch(train_insts, num_iter, dev_insts, batch_size)
 
-        #try:
+        # try:
         model.load()
 
         results = model.test(test_insts)
@@ -1536,10 +1513,9 @@ if __name__ == "__main__":
                 print(inst.get_output())
                 print(inst.get_prediction())
                 print()
-        evaluator.set_result_path_prefix('result/' + model_name +'_' + num_fold_str)
+        evaluator.set_result_path_prefix('result/' + model_name + '_' + num_fold_str)
         ret = model.evaluator.eval(results)
         print(ret)
-
 
         overall_score.accumulate(ret)
         # except:
@@ -1548,7 +1524,6 @@ if __name__ == "__main__":
 
         print()
         print()
-
 
     average_score = overall_score.get_average()
     print(colored('Overall Result===============', 'blue'))
@@ -1563,6 +1538,3 @@ if __name__ == "__main__":
         print('Results of each folds:')
         for i in range(len(overall_score.fold_rets)):
             print(overall_score.fold_rets[i])
-
-
-

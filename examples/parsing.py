@@ -3,19 +3,18 @@ from statnlp.hypergraph import NeuralBuilder, NetworkModel, NetworkConfig
 import torch
 import torch.nn as nn
 import numpy as np
-from statnlp.hypergraph.Utils import load_emb_glove, load_emb_word2vec
+from statnlp.hypergraph.Utils import load_emb_glove
 from statnlp.common import TreeInstance
 from statnlp.common.eval import constituent_eval
-from statnlp.examples.parsingtree import trees
+from examples.parsingtree import trees
 from termcolor import colored
 from enum import Enum
 import functools
 from statnlp.hypergraph.NetworkConfig import LossType
 
-
-START_IDX = 0 #"<START>"
-STOP_IDX = 1 #"<STOP>"
-UNK_IDX = 2 #"<UNK>"
+START_IDX = 0  # "<START>"
+STOP_IDX = 1  # "<STOP>"
+UNK_IDX = 2  # "<UNK>"
 
 START = "<START>"
 STOP = "<STOP>"
@@ -35,17 +34,17 @@ class TreeNetworkCompiler(NetworkCompiler):
 
     def __init__(self, label_map, labels, max_size=20):
         super().__init__()
-        self.labels = labels ##  include (), but not dummy label
+        self.labels = labels  ##  include (), but not dummy label
         self.label2id = label_map
 
         # for key in self.label2id:
         #     self.labels[self.label2id[key]] = key
 
-
         self.max_size = max_size
         ### Length, rightIdx, nodeType, LabelId
         NetworkIDMapper.set_capacity(
-            np.asarray([self.max_size + 1, self.max_size + 1, NodeType.root.value + 1, len(self.labels) + 1], dtype=np.int64))
+            np.asarray([self.max_size + 1, self.max_size + 1, NodeType.root.value + 1, len(self.labels) + 1],
+                       dtype=np.int64))
 
         print(self.label2id)
         print(self.labels)
@@ -73,7 +72,6 @@ class TreeNetworkCompiler(NetworkCompiler):
                     node_leaf = self.to_leaf(left)
                     builder.add_node(node_leaf)
                     builder.add_edge(node_leaf, [node_sink])
-
 
                 node_span = self.to_span(left, right)
 
@@ -160,7 +158,6 @@ class TreeNetworkCompiler(NetworkCompiler):
                     builder.add_node(node_leaf)
                     builder.add_edge(node_leaf, [node_sink])
 
-
                 node_span = self.to_span(left, right)
                 builder.add_node(node_span)
 
@@ -174,7 +171,6 @@ class TreeNetworkCompiler(NetworkCompiler):
                 label = oracle_label
                 node_label = self.to_label(left, right, self.label2id[label])
                 builder.add_node(node_label)
-
 
                 if length > 1:
                     builder.add_edge(node_label, [node_sink])
@@ -199,7 +195,6 @@ class TreeNetworkCompiler(NetworkCompiler):
 
                         builder.add_edge(node_span, [node_leaf])
 
-
                 if length == size:
                     builder.add_edge(node_root, [node_span])
 
@@ -212,7 +207,8 @@ class TreeNetworkCompiler(NetworkCompiler):
         all_nodes = self.all_nodes
         root_idx = np.argwhere(all_nodes == root_node)[0][0]
         node_count = root_idx + 1
-        network = builder.build_from_generic(network_id, inst, self.all_nodes, self.all_children, node_count, self.num_hyperedge, param, self)
+        network = builder.build_from_generic(network_id, inst, self.all_nodes, self.all_children, node_count,
+                                             self.num_hyperedge, param, self)
         return network
 
     def compile_unlabeled_old(self, network_id, inst, param):
@@ -226,8 +222,6 @@ class TreeNetworkCompiler(NetworkCompiler):
         builder.add_node(node_root)
 
         size = inst.size()
-
-
 
         for length in range(1, size + 1):
             for left in range(0, size + 1 - length):
@@ -255,14 +249,13 @@ class TreeNetworkCompiler(NetworkCompiler):
                     if length > 1:
                         builder.add_edge(node_label, [node_sink])
                         builder.add_edge(node_span, [node_label, node_span_prime])
-                    else: #length == 1
+                    else:  # length == 1
                         builder.add_edge(node_span, [node_label])
 
                         node_leaf = self.to_leaf(left)
 
                         builder.add_edge(node_label, [node_leaf])
                         builder.add_edge(node_span, [node_leaf])
-
 
                 for k in range(left + 1, right):
 
@@ -283,7 +276,8 @@ class TreeNetworkCompiler(NetworkCompiler):
         size = inst.size()
         root_node = self.to_root(size)
         all_nodes = network.get_all_nodes()
-        root_idx = np.argwhere(all_nodes == root_node)[0][0]  # network.count_nodes() - 1 #self._all_nodes.index(root_node)
+        root_idx = np.argwhere(all_nodes == root_node)[0][
+            0]  # network.count_nodes() - 1 #self._all_nodes.index(root_node)
 
         children = network.get_max_path(root_idx)  # children[0]: root node
         prediction_tmp = self.to_tree_helper(network, children[0])
@@ -325,7 +319,7 @@ class TreeNetworkCompiler(NetworkCompiler):
                 parse_node = trees.InternalParseNode(label, tree_children)
                 return [parse_node]
             else:
-                return  tree_children
+                return tree_children
 
 
         else:
@@ -339,9 +333,9 @@ class TreeNetworkCompiler(NetworkCompiler):
             return [parse_node]
 
 
-
 class TreeNeuralBuilder(NeuralBuilder):
-    def __init__(self, gnp, label_size, voc_size, word_embed_dim, tag_size, tag_embed_dim, lstm_dim = 250, label_hidden_size = 250, dropout = 0.4):
+    def __init__(self, gnp, label_size, voc_size, word_embed_dim, tag_size, tag_embed_dim, lstm_dim=250,
+                 label_hidden_size=250, dropout=0.4):
         super().__init__(gnp)
         # self.word_embed = nn.Embedding(voc_size, self.token_embed, padding_idx=0).to(NetworkConfig.DEVICE)
         self.label_size = label_size
@@ -359,7 +353,8 @@ class TreeNeuralBuilder(NeuralBuilder):
         self.tag_embeddings.weight.data.copy_(torch.from_numpy(tag_embed_parameter))
 
         embed_dim = word_embed_dim + tag_embed_dim
-        self.rnn = nn.LSTM(embed_dim, lstm_dim, batch_first=True, bidirectional=True, dropout=dropout).to(NetworkConfig.DEVICE)
+        self.rnn = nn.LSTM(embed_dim, lstm_dim, batch_first=True, bidirectional=True, dropout=dropout).to(
+            NetworkConfig.DEVICE)
 
         self.linear1 = nn.Linear(lstm_dim * 2, label_hidden_size).to(NetworkConfig.DEVICE)
         self.linear2 = nn.Linear(label_hidden_size, label_size - 1).to(NetworkConfig.DEVICE)
@@ -368,20 +363,17 @@ class TreeNeuralBuilder(NeuralBuilder):
         nn.init.xavier_uniform_(self.linear2.weight)
 
         self.f_label = nn.Sequential(
-            #nn.Linear(lstm_dim * 2, label_hidden_size).to(NetworkConfig.DEVICE),
+            # nn.Linear(lstm_dim * 2, label_hidden_size).to(NetworkConfig.DEVICE),
             self.linear1,
             nn.ReLU().to(NetworkConfig.DEVICE),
-            #nn.Linear(label_hidden_size, label_size - 1).to(NetworkConfig.DEVICE)
+            # nn.Linear(label_hidden_size, label_size - 1).to(NetworkConfig.DEVICE)
             self.linear2
         ).to(NetworkConfig.DEVICE)
-
-
 
     def load_pretrain(self, word2idx):
         emb = load_emb_glove(None, word2idx, self.word_embed_dim)
         self.word_embeddings.weight.data.copy_(torch.from_numpy(emb))
         self.word_embeddings = self.word_embeddings.to(NetworkConfig.DEVICE)
-
 
     def build_nn_graph(self, instance):
 
@@ -396,7 +388,7 @@ class TreeNeuralBuilder(NeuralBuilder):
         word_rep = torch.cat([tag_embs, word_embs], 1).unsqueeze(0)
 
         lstm_outputs, _ = self.rnn(word_rep, None)
-        lstm_outputs = lstm_outputs.squeeze(0)  #sent_len * hidden_size
+        lstm_outputs = lstm_outputs.squeeze(0)  # sent_len * hidden_size
 
         sent_len, lstm_dim = lstm_outputs.size()
 
@@ -404,19 +396,19 @@ class TreeNeuralBuilder(NeuralBuilder):
         square_t = square.transpose(0, 1)
 
         ret = square_t - square
-        ret = ret[:, 1 : sent_len - 1, :]
+        ret = ret[:, 1: sent_len - 1, :]
 
         half_lstm_dim = lstm_dim // 2
 
         fwd = ret[:sent_len - 2, :, :half_lstm_dim]
 
-        bwd = ret[2:, :, half_lstm_dim:].transpose(0,1)
+        bwd = ret[2:, :, half_lstm_dim:].transpose(0, 1)
 
         bi = torch.cat([fwd, bwd], 2)
         spans = self.f_label(bi)
 
-        #add the score for label ()
-        zeros = torch.zeros((sent_len - 2, sent_len - 2, 1)).to(NetworkConfig.DEVICE) # score of (), empty label
+        # add the score for label ()
+        zeros = torch.zeros((sent_len - 2, sent_len - 2, 1)).to(NetworkConfig.DEVICE)  # score of (), empty label
         spans = torch.cat([zeros, spans], 2)
 
         spans = spans + instance.augment
@@ -435,7 +427,7 @@ class TreeNeuralBuilder(NeuralBuilder):
             left = right - length
 
             if node_type != NodeType.label.value:
-                #idx = (size - 1) * size  ## a index with 0
+                # idx = (size - 1) * size  ## a index with 0
                 idx = (size - 2) * size * self.label_size  ## a index with 0
             else:
                 row = left * size + right - 1
@@ -443,9 +435,7 @@ class TreeNeuralBuilder(NeuralBuilder):
             nodeid2nn[k] = idx
         return nodeid2nn
 
-
     def build_nn_graph_old(self, instance):
-
 
         word_seq = instance.word_seq
         tag_seq = instance.tag_seq
@@ -492,7 +482,7 @@ class TreeNeuralBuilder(NeuralBuilder):
                 zeros = torch.zeros((self.label_size)).to(NetworkConfig.DEVICE)
                 spans_i.append(zeros)
             for j in range(i + 1, size + 1):
-                label_scores = get_label_scores(i, j)  #  label_size
+                label_scores = get_label_scores(i, j)  # label_size
                 spans_i.append(label_scores)
             spans_i = torch.stack(spans_i, 0)
             spans.append(spans_i)
@@ -501,7 +491,6 @@ class TreeNeuralBuilder(NeuralBuilder):
         spans = torch.stack(spans, 0)
 
         return spans
-
 
     def build_nn_graph_batch(self, batch_input_seqs):
 
@@ -518,6 +507,7 @@ class TreeNeuralBuilder(NeuralBuilder):
         # lstm_outputs : batch_size * sent_len * hidden_size
         lstm_outputs = lstm_outputs.transpose(0, 1)
         lstm_outputs = lstm_outputs.transpose(1, 2)
+
         # lstm_outputs :  sent_len * hidden_size * batch_size
 
         @functools.lru_cache(maxsize=None)
@@ -532,9 +522,9 @@ class TreeNeuralBuilder(NeuralBuilder):
 
         @functools.lru_cache(maxsize=None)
         def get_label_scores(left, right):
-            span_emb = get_span_encoding_batches(left, right) #hidden_size * batch_size
-            span_emb = span_emb.transpose(0, 1) #batch_size * hidden_size
-            non_empty_label_scores = self.f_label(span_emb) #batch_size * (label_size - 1)
+            span_emb = get_span_encoding_batches(left, right)  # hidden_size * batch_size
+            span_emb = span_emb.transpose(0, 1)  # batch_size * hidden_size
+            non_empty_label_scores = self.f_label(span_emb)  # batch_size * (label_size - 1)
             zeros = torch.zeros((batch_size, 1)).to(NetworkConfig.DEVICE)
             label_vec = torch.cat([zeros, non_empty_label_scores], 1)
             return label_vec
@@ -547,18 +537,16 @@ class TreeNeuralBuilder(NeuralBuilder):
                 zeros = torch.zeros((batch_size, self.label_size)).to(NetworkConfig.DEVICE)
                 spans_i.append(zeros)
             for j in range(i + 1, sent_len + 1):
-
-                label_scores = get_label_scores(i, j)#batch_size * label_size
+                label_scores = get_label_scores(i, j)  # batch_size * label_size
                 spans_i.append(label_scores)
             spans_i = torch.stack(spans_i, 0)
             spans.append(spans_i)
             del spans_i
 
         spans = torch.stack(spans, 0)  # sent_len * sent_len * batch_size * label_size
-        spans.transpose_(1, 2) # sent_len * batch_size * sent_len  * label_size
-        spans.transpose_(0, 1) # batch_size * sent_len * sent_len *  label_size
+        spans.transpose_(1, 2)  # sent_len * batch_size * sent_len  * label_size
+        spans.transpose_(0, 1)  # batch_size * sent_len * sent_len *  label_size
         return spans
-
 
     def generate_batches(self, train_insts, batch_size):
         #  '''
@@ -573,7 +561,7 @@ class TreeNeuralBuilder(NeuralBuilder):
             if max_size < size:
                 max_size = size
 
-        max_size_with_start_stop = max_size + 2  #include <START> and <STOP>
+        max_size_with_start_stop = max_size + 2  # include <START> and <STOP>
 
         batches = []
         for i in range(0, len(train_insts), batch_size):
@@ -606,10 +594,9 @@ class TreeNeuralBuilder(NeuralBuilder):
 
         return batches
 
-
     def get_nn_score(self, network, parent_k):
         parent_arr = network.get_node_array(parent_k)  # pos, label_id, node_type
-        right, length, node_type, label_id= parent_arr
+        right, length, node_type, label_id = parent_arr
         left = right - length
 
         if node_type != NodeType.label.value or node_type == NodeType.sink.value:  # Start, End
@@ -618,14 +605,12 @@ class TreeNeuralBuilder(NeuralBuilder):
             spans = network.nn_output
             return spans[left, right][label_id]
 
-
     def get_label_id(self, network, parent_k):
         parent_arr = network.get_node_array(parent_k)
         return parent_arr[3]
 
 
 class TreeReader():
-
     Stats = {'MAX_LENGTH': 0}
 
     @staticmethod
@@ -648,7 +633,6 @@ class TreeReader():
             else:
                 inst.set_unlabeled()
             insts.append(inst)
-
 
         if number > -1:
             insts = insts[:number]
@@ -675,18 +659,17 @@ if __name__ == "__main__":
     num_test = 20
     num_iter = 40
     batch_size = 1
-    #device = "cpu"
+    # device = "cpu"
     num_thread = 1
     model_path = "best_parsingtree.pt"
     check_every = None
-    #dev_file = test_file
+    # dev_file = test_file
     NetworkConfig.BUILD_GRAPH_WITH_FULL_BATCH = False
     NetworkConfig.IGNORE_TRANSITION = True
     NetworkConfig.GPU_ID = -1
     NetworkConfig.ECHO_TRAINING_PROGRESS = 100
     NetworkConfig.LOSS_TYPE = LossType.SSVM
     NetworkConfig.NEUTRAL_BUILDER_ENABLE_NODE_TO_NN_OUTPUT_MAPPING = True
-
 
     if TRIAL == True:
         data_size = -1
@@ -705,21 +688,22 @@ if __name__ == "__main__":
     dev_insts = TreeReader.read_insts(dev_file, False, num_dev)
     test_insts = TreeReader.read_insts(test_file, False, num_test)
 
+    vocab2id = {START: 0, STOP: 1, UNK: 2}
+    tag2id = {START: 0, STOP: 1, UNK: 2}
+    label2id = {(): 0}
 
-    vocab2id = {START:0, STOP:1, UNK:2}
-    tag2id = {START:0, STOP:1, UNK:2}
-    label2id = {():0}
-
-    for inst in train_insts:  #+ dev_insts + test_insts:
+    for inst in train_insts:  # + dev_insts + test_insts:
         for word, tag in inst.input:
             if word not in vocab2id:
                 vocab2id[word] = len(vocab2id)
             if tag not in tag2id:
                 tag2id[tag] = len(tag2id)
 
-    for inst in train_insts: # + dev_insts + test_insts:
-        inst.word_seq = torch.tensor([vocab2id[word] for word, tag in [(START, START)] + inst.input + [(STOP, STOP)]]).to(NetworkConfig.DEVICE)
-        inst.tag_seq = torch.tensor([tag2id[tag] for word, tag in [(START, START)] + inst.input + [(STOP, STOP)]]).to(NetworkConfig.DEVICE)
+    for inst in train_insts:  # + dev_insts + test_insts:
+        inst.word_seq = torch.tensor(
+            [vocab2id[word] for word, tag in [(START, START)] + inst.input + [(STOP, STOP)]]).to(NetworkConfig.DEVICE)
+        inst.tag_seq = torch.tensor([tag2id[tag] for word, tag in [(START, START)] + inst.input + [(STOP, STOP)]]).to(
+            NetworkConfig.DEVICE)
         inst.output = inst.output.convert()
 
         nodes = [inst.output]
@@ -733,17 +717,13 @@ if __name__ == "__main__":
             else:
                 pass
 
-
-
-    print('label2id:',list(label2id.keys()))
+    print('label2id:', list(label2id.keys()))
     label_size = len(label2id)
 
     labels = [()] * (len(label2id))  ##  include (), but not dummy label
 
-
     for key in label2id:
         labels[label2id[key]] = key
-
 
     for inst in train_insts:
         size = len(inst.input)
@@ -759,21 +739,21 @@ if __name__ == "__main__":
 
         inst.augment = torch.from_numpy(augment)
 
-
     for inst in dev_insts + test_insts:
-        inst.word_seq = torch.tensor([vocab2id[word] if word in vocab2id else vocab2id[UNK] for word, tag in [(START, START)] + inst.input + [(STOP, STOP)]]).to(NetworkConfig.DEVICE)
-        inst.tag_seq = torch.tensor([tag2id[tag] if tag in tag2id else tag2id[UNK] for word, tag in [(START, START)] + inst.input + [(STOP, STOP)]]).to(NetworkConfig.DEVICE)
+        inst.word_seq = torch.tensor([vocab2id[word] if word in vocab2id else vocab2id[UNK] for word, tag in
+                                      [(START, START)] + inst.input + [(STOP, STOP)]]).to(NetworkConfig.DEVICE)
+        inst.tag_seq = torch.tensor([tag2id[tag] if tag in tag2id else tag2id[UNK] for word, tag in
+                                     [(START, START)] + inst.input + [(STOP, STOP)]]).to(NetworkConfig.DEVICE)
         size = len(inst.input)
-        augment = np.zeros((size, size, label_size) , dtype=np.float32)
+        augment = np.zeros((size, size, label_size), dtype=np.float32)
         inst.augment = torch.from_numpy(augment)
 
     gnp = TensorGlobalNetworkParam()
 
-
     fm = TreeNeuralBuilder(gnp, label_size, len(vocab2id), 100, len(tag2id), 50)
     fm.load_pretrain(vocab2id)
 
-    compiler = TreeNetworkCompiler(label2id, labels, max_size = TreeReader.Stats['MAX_LENGTH'] + 1)
+    compiler = TreeNetworkCompiler(label2id, labels, max_size=TreeReader.Stats['MAX_LENGTH'] + 1)
 
     evaluator = constituent_eval()
 
@@ -783,8 +763,10 @@ if __name__ == "__main__":
 
     if DEBUG and visual:
         from statnlp.hypergraph import Visualizer
+
+
         class TreeVisualizer(Visualizer):
-            def __init__(self, compiler, fm, labels, span = 50):
+            def __init__(self, compiler, fm, labels, span=50):
                 super().__init__(compiler, fm)
                 self.labels = labels
                 self.span = span
@@ -812,19 +794,19 @@ if __name__ == "__main__":
             def nodearr2coord(self, node_arr):
                 span = self.span
 
-                right_idx, length , node_type, label_id = node_arr
+                right_idx, length, node_type, label_id = node_arr
 
-                if node_type == 0: ##Sink
+                if node_type == 0:  ##Sink
                     x = 0
                     y = -1 * span
-                elif node_type == 5: ##Root
+                elif node_type == 5:  ##Root
                     x = 2.5
                     y = (length + 1) * span
 
-                elif node_type == 4 : #Span or
+                elif node_type == 4:  # Span or
                     x = right_idx
                     y = length * span
-                elif node_type == 1: #leaf
+                elif node_type == 1:  # leaf
                     x = right_idx
                     y = length * span - 30
 
@@ -840,19 +822,19 @@ if __name__ == "__main__":
 
                 return (x, y)
 
+
         visualizer = TreeVisualizer(compiler, fm, labels)
         inst = train_insts[0]
-        inst.is_labeled = True # True
+        inst.is_labeled = True  # True
         visualizer.visualize_inst(inst)
         exit()
-
 
     if batch_size == 1:
         model.learn(train_insts, num_iter, dev_insts, test_insts)
     else:
         model.learn_batch(train_insts, num_iter, dev_insts, test_insts, batch_size)
 
-    #model.load_state_dict(torch.load(model.model_path))
+    # model.load_state_dict(torch.load(model.model_path))
     model.load()
 
     results = model.test(test_insts)
@@ -864,5 +846,3 @@ if __name__ == "__main__":
 
     ret = model.evaluator.eval(test_insts)
     print(ret)
-
-

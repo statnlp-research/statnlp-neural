@@ -7,6 +7,7 @@ import torch
 import numpy as np
 from statnlp.hypergraph.Utils import log_sum_exp
 
+
 class Network:
 
     def __init__(self, network_id, instance, fm):
@@ -18,7 +19,6 @@ class Network:
         self.node2hyperedge = []
 
         self.nodeid2childrenids = []
-
 
     def get_network_id(self):
         return self.network_id
@@ -102,9 +102,9 @@ class Network:
             tuple_id = self.gnp.add_transition((parent_label_id, rhs))
             tuple_id_list_tensor.append(tuple_id)
 
-
-            children_k_list = list(children_k) #[children_k[0], children_k[1]] if len(children_k) > 1 else [children_k[0], self.empty_index]
-            while(len(children_k_list) < 2):
+            children_k_list = list(
+                children_k)  # [children_k[0], children_k[1]] if len(children_k) > 1 else [children_k[0], self.empty_index]
+            while (len(children_k_list) < 2):
                 children_k_list.append(self.empty_index)
 
             children_k_list = torch.tensor(children_k_list)
@@ -116,26 +116,21 @@ class Network:
         tuple_id_list_tensor = torch.tensor(tuple_id_list_tensor).to(NetworkConfig.DEVICE)
         self.node2hyperedge.append(tuple_id_list_tensor)
 
-
     def get_node_array(self, k):
         node = self.get_node(k)
         return NetworkIDMapper.to_hybrid_node_array(node)
-
 
     @abstractmethod
     def get_children(self, k) -> np.ndarray:
         pass
 
-
     @abstractmethod
     def get_node(self, k):
         pass
 
-
     @abstractmethod
     def count_nodes(self) -> int:
         pass
-
 
     @abstractmethod
     def is_removed(self, k):
@@ -172,7 +167,6 @@ class Network:
 
         else:
             score = emission_expr
-
 
         self._max[k], max_id = torch.max(score, 0)
         self._max_paths[k] = children_list_k[max_id]
